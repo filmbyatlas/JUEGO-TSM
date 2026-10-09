@@ -1,0 +1,2165 @@
+<title>TSM · Todos Somos Muslera</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;700&display=swap">
+<style>
+/* Layout: un escenario a pantalla completa (canvas) con menús superpuestos y una botonera táctil abajo. */
+:root {
+  --bg: #0b0e18;
+  --panel: rgba(12, 10, 20, 0.88);
+  --panel-2: rgba(28, 22, 36, 0.92);
+  --fg: #f5efe6;
+  --muted: #b9b0a4;
+  --pink: #ec93c0;      /* guantes de Muslera */
+  --cyan: #56cfcb;      /* guantes de Oscar */
+  --gold: #f2d33b;
+  --red: #e8463c;
+  --line: rgba(255, 255, 255, 0.12);
+  --display: "Anton", Impact, "Arial Black", sans-serif;
+  --body: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 18px; line-height: 1.3; overflow: hidden; -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; }
+#stage { height: 100%; display: flex; flex-direction: column; position: relative; }
+body.touch.portrait.playing #arena { flex: 0 0 auto; height: min(78vw, 58vh); }
+body.touch.portrait.playing #controls { flex: 1 1 auto; align-items: center; padding-top: 18px; }
+body.touch.portrait.playing .ctl { width: 68px; height: 68px; } body.touch.portrait.playing .ctl.move { width: 64px; height: 84px; } body.touch.portrait.playing .ctl-def .ctl { width: 78px; height: 56px; }
+body.touch #topbar { top: auto; bottom: 8px; }
+body.touch:not(.playing) #btn-pause { display: none; }
+/* táctil en horizontal: la botonera flota sobre el escenario para no robar altura */
+body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.45)); border-top: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+body.touch.playing:not(.portrait) #controls .ctl { pointer-events: auto; opacity: 0.82; }
+body.touch.playing:not(.portrait) #topbar { bottom: auto; top: 50%; right: 6px; flex-direction: column; }
+/* táctil en vertical: dos filas de botones a la derecha */
+body.touch.portrait.playing .ctl-group.right { flex-wrap: wrap; justify-content: flex-end; width: 222px; row-gap: 8px; }
+body.touch.portrait.playing .ctl-def { flex-direction: row; width: 100%; justify-content: flex-end; }
+body.touch.portrait.playing .ctl-def .ctl { width: 100px; }
+body.touch.portrait.playing .ctl.move { width: 56px; height: 120px; }
+body.touch.portrait.playing .ctl-group.right .ctl:not(.dodge):not(.block) { width: 66px; height: 66px; }
+#arena { position: relative; flex: 1 1 auto; min-height: 0; background: #070a14; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+#game { display: block; position: absolute; inset: 0; }
+#topbar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
+#topbar button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,0.55); color: var(--fg); font-size: 18px; cursor: pointer; }
+#topbar button:focus-visible, .btn:focus-visible, .ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+body:not(.touch) #btn-pause { display: none; }
+
+/* botonera táctil */
+#controls { display: none; flex: 0 0 auto; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, #14101c, #0b0810); border-top: 1px solid var(--line); }
+#controls.active { display: flex; }
+body:not(.touch) #controls { display: none !important; }
+#controls { justify-content: space-between; align-items: flex-end; gap: 10px; }
+.ctl-group { display: flex; gap: 8px; align-items: flex-end; }
+.ctl { border: 0; border-radius: 14px; font-family: var(--display); font-size: 17px; letter-spacing: 0.04em; color: #fff; background: #2a2433; box-shadow: 0 4px 0 #15111b, inset 0 1px 0 rgba(255,255,255,0.12); width: 64px; height: 64px; touch-action: none; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; }
+.ctl small { font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; letter-spacing: 0.05em; }
+.ctl.on { transform: translateY(3px); box-shadow: 0 1px 0 #15111b; filter: brightness(1.25); }
+.ctl.move { width: 60px; height: 70px; font-size: 26px; }
+.ctl.jab { background: #b84e86; } .ctl.cross { background: #d2537f; } .ctl.upper { background: #e8468a; box-shadow: 0 4px 0 #7a1f45, inset 0 1px 0 rgba(255,255,255,0.15); }
+.ctl.dodge { background: #2f8a7f; } .ctl.block { background: #3a5a9a; }
+.ctl-def { display: flex; flex-direction: column; gap: 8px; }
+.ctl-def .ctl { height: 50px; width: 72px; font-size: 14px; }
+@media (max-width: 420px) { .ctl { width: 56px; height: 56px; font-size: 15px; } .ctl.move { width: 50px; height: 64px; } .ctl-def .ctl { width: 62px; height: 46px; } .ctl-group { gap: 6px; } }
+@media (max-width: 380px) { body.touch.portrait.playing .ctl { width: 58px; height: 62px; } body.touch.portrait.playing .ctl.move { width: 54px; height: 76px; } body.touch.portrait.playing .ctl-def .ctl { width: 66px; height: 50px; } }
+
+/* menús superpuestos */
+.overlay { position: absolute; inset: 0; z-index: 4; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: radial-gradient(ellipse at 50% 40%, rgba(10,8,16,0.55), rgba(5,4,10,0.9)); }
+.overlay[hidden] { display: none; }
+.panel { width: min(100%, 560px); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); text-align: center; }
+.panel.wide { width: min(100%, 680px); }
+.eyebrow { font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+h1 { font-family: var(--display); font-size: clamp(64px, 16vw, 120px); line-height: 0.9; margin: 4px 0 0; letter-spacing: 0.02em; color: #fff; text-shadow: 0 6px 0 #5a1e3f, 0 10px 30px rgba(236,147,192,0.35); text-wrap: balance; }
+h1 span { color: var(--pink); }
+h2 { font-family: var(--display); font-size: clamp(30px, 7vw, 44px); margin: 0 0 6px; letter-spacing: 0.03em; text-wrap: balance; }
+.sub { font-size: clamp(20px, 4.6vw, 28px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin: 2px 0 10px; }
+.portraits { display: block; width: min(100%, 320px); height: auto; margin: 4px auto 2px; }
+.record { display: grid; gap: 2px; margin: 6px 0 12px; font-size: 18px; color: var(--muted); }
+.record b { color: var(--fg); font-size: 22px; }
+#title-beltcv { width: 220px; height: 60px; display: block; margin: 2px auto 0; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+.btn { font-family: var(--display); font-size: 22px; letter-spacing: 0.06em; padding: 12px 22px; border-radius: 12px; border: 0; cursor: pointer; background: #2b2535; color: #fff; box-shadow: 0 4px 0 #15111b; min-width: 150px; }
+.btn.primary { background: linear-gradient(180deg, var(--pink), #c85a94); color: #2a0a1c; box-shadow: 0 4px 0 #6d2a4c; font-size: 28px; padding: 14px 30px; }
+.btn.pool { background: linear-gradient(180deg, #5fd0ff, #2a8fcf); color: #062034; box-shadow: 0 4px 0 #14456b; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #15111b; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn small { display: block; font-family: var(--body); font-size: 14px; letter-spacing: 0.02em; font-weight: 700; margin-top: 3px; opacity: 0.85; }
+.btn-back { min-width: 120px; }
+.howto { text-align: left; display: grid; gap: 12px; margin-top: 8px; }
+.howto h3 { margin: 0 0 4px; font-family: var(--display); font-size: 20px; letter-spacing: 0.05em; color: var(--gold); }
+.howto ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.howto li { min-width: 0; }
+kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 0 6px; font-size: 15px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.tag.pink { background: var(--pink); color: #2a0a1c; } .tag.cyan { background: var(--cyan); color: #04302e; }
+.belts { display: grid; gap: 10px; margin-top: 10px; text-align: left; }
+.belt-row { display: flex; gap: 14px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+.belt-row.unlocked { border-color: rgba(242,211,59,0.45); background: rgba(242,211,59,0.06); }
+.belt-row canvas { flex: 0 0 auto; }
+.belt-info { display: grid; min-width: 0; }
+.belt-info strong { font-family: var(--display); font-size: 18px; letter-spacing: 0.04em; font-weight: 400; }
+.belt-info span { color: var(--muted); font-size: 16px; }
+.belt-info em { color: var(--gold); font-style: normal; font-size: 15px; }
+@media (max-width: 420px) { .belt-row { flex-direction: column; align-items: flex-start; } }
+.scores { display: flex; justify-content: center; gap: 24px; margin: 8px 0 4px; }
+.sc { display: grid; justify-items: center; }
+.sc span { font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.sc b { font-family: var(--display); font-size: 48px; line-height: 1; font-weight: 400; }
+.sc small { color: var(--muted); font-size: 14px; }
+.judges { color: var(--gold); font-weight: 700; margin: 4px 0; }
+.state { color: var(--muted); margin-bottom: 10px; }
+.stats { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 17px; font-variant-numeric: tabular-nums; }
+.stats th { font-family: var(--display); font-weight: 400; letter-spacing: 0.05em; color: var(--muted); padding: 4px; }
+.stats td { padding: 4px 6px; border-top: 1px solid var(--line); text-align: center; }
+.stats td:first-child { text-align: left; color: var(--muted); }
+#res-title.win { color: var(--gold); text-shadow: 0 4px 0 #5a4a00; } #res-title.lose { color: #ff8a8a; text-shadow: 0 4px 0 #4a0a0a; }
+#res-belt { margin: 8px 0; padding: 10px; border-radius: 12px; background: rgba(242,211,59,0.08); border: 1px solid rgba(242,211,59,0.4); }
+#res-beltcv { width: 260px; height: 70px; display: block; margin: 0 auto 6px; max-width: 100%; }
+.quote { color: var(--muted); font-style: italic; margin: 6px 0 2px; }
+.progress { margin: 4px 0 8px; }
+.foot { margin-top: 12px; font-size: 14px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .btn:active, .ctl.on { transform: none; } }
+</style>
+
+<div id="stage">
+  <div id="arena">
+    <canvas id="game" aria-label="Combate de boxeo entre Muslera y Oscar"></canvas>
+    <div id="topbar">
+      <button id="btn-pause" type="button" aria-label="Pausa">⏸</button>
+      <button id="btn-mute" type="button" aria-label="Silenciar">🔊</button>
+    </div>
+  </div>
+
+    <section class="overlay" id="ov-title">
+      <div class="panel">
+        <div class="eyebrow">KLK presenta</div>
+        <h1>T<span>S</span>M</h1>
+        <div class="sub">Todos Somos Muslera</div>
+        <canvas id="title-portraits" class="portraits" width="640" height="300"></canvas>
+        <div class="record">
+          <b id="title-record">0 victorias · 0 derrotas</b>
+          <canvas id="title-beltcv" width="440" height="120"></canvas>
+          <span id="title-belt">Sin cinturón</span>
+          <span id="title-next"></span>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="btn-fight" type="button">PELEAR</button>
+          <button class="btn" id="btn-howto" type="button">CÓMO SE JUEGA</button>
+          <button class="btn" id="btn-belts" type="button">CINTURONES</button>
+        </div>
+        <div class="foot">Tú eres Muslera. Oscar hace boxeo. Tú no. Suerte.</div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-howto" hidden>
+      <div class="panel wide">
+        <h2>CÓMO SE JUEGA</h2>
+        <div class="howto">
+          <div>
+            <h3>La pelea</h3>
+            <ul>
+              <li>Tres asaltos de un minuto. Gana quien tumbe tres veces al otro, o los jueces deciden al final. Los jueces son amigos de Oscar.</li>
+              <li><span class="tag pink">Muslera</span> va siempre con la guardia baja: su bloqueo tarda en subir y es flojo. A cambio, con las manos tan abajo, el <b>uppercut le sale rapidísimo</b> y pega como un camión.</li>
+              <li><span class="tag cyan">Oscar</span> va bien plantado, bloquea casi todo, lee los golpes repetidos y castiga cuando te ve vendido.</li>
+              <li>Si te tumban, <b>machaca los botones</b> para levantarte antes del 10. Cada caída cuesta más levantarse.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Cómo se le gana (una de cada veinte, con suerte)</h3>
+            <ul>
+              <li><b>Esquiva</b> justo cuando Oscar lanza: se queda vendido un segundo. Métele el uppercut ahí. Eso es una <b>CONTRA</b> y duele el doble.</li>
+              <li>De vez en cuando Oscar <b>se pone chulo</b> y baja los brazos para mirar al público. Es tu momento.</li>
+              <li>No repitas el mismo golpe tres veces: Oscar lo lee. Y no te quedes sin aguante: pegarás a cámara lenta.</li>
+              <li>Entre asaltos puedes <b>meter la cabeza en la piscina</b> una sola vez por pelea: recuperas vida, aguante al máximo y 20 segundos de fresquito.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Controles</h3>
+            <ul>
+              <li>Teclado: <kbd>←</kbd> <kbd>→</kbd> o <kbd>A</kbd> <kbd>D</kbd> moverse · <kbd>J</kbd> jab · <kbd>K</kbd> cruzado · <kbd>L</kbd> uppercut · <kbd>Espacio</kbd> esquivar · <kbd>S</kbd> o <kbd>Shift</kbd> guardia · <kbd>Esc</kbd> pausa.</li>
+              <li>Móvil: botones en pantalla. Mejor en horizontal. Mantén pulsada la guardia.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="actions"><button class="btn btn-back primary" type="button">VOLVER</button></div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-belts" hidden>
+      <div class="panel wide">
+        <h2>CINTURONES</h2>
+        <div class="state" id="belts-summary"></div>
+        <div class="belts" id="belts-list"></div>
+        <div class="actions"><button class="btn btn-back primary" type="button">VOLVER</button><button class="btn" id="btn-reset" type="button">Borrar progreso</button></div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-break" hidden>
+      <div class="panel">
+        <h2 id="break-title">FIN DEL ASALTO 1</h2>
+        <div class="scores" id="break-score"></div>
+        <div class="judges" id="break-judges"></div>
+        <div class="state" id="break-state"></div>
+        <div class="actions">
+          <button class="btn pool" id="btn-pool" type="button">METER LA CABEZA EN LA PISCINA<small>+30 vida · aguante al máximo · 20 s fresquito</small></button>
+          <button class="btn" id="btn-rest" type="button">DESCANSAR EN LA ESQUINA<small>+10 vida · +40 aguante</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-over" hidden>
+      <div class="panel wide">
+        <h2 id="res-title">OSCAR GANA</h2>
+        <div class="state" id="res-sub"></div>
+        <div id="res-belt" hidden>
+          <canvas id="res-beltcv" width="520" height="140"></canvas>
+          <div class="sub" id="res-beltname"></div>
+          <div id="res-belttext"></div>
+        </div>
+        <table class="stats" id="res-stats"></table>
+        <div class="progress" id="res-progress"></div>
+        <div class="quote" id="res-quote"></div>
+        <div class="actions">
+          <button class="btn primary" id="btn-again" type="button">REVANCHA</button>
+          <button class="btn" id="btn-menu" type="button">MENÚ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-pause" hidden>
+      <div class="panel">
+        <h2>PAUSA</h2>
+        <div class="state">Oscar está esperando. No le gusta esperar.</div>
+        <div class="actions"><button class="btn primary" id="btn-resume" type="button">SEGUIR</button><button class="btn" id="btn-quit" type="button">ABANDONAR</button></div>
+      </div>
+    </section>
+
+  <div id="controls">
+    <div class="ctl-group">
+      <button class="ctl move" data-a="left" type="button" aria-label="Izquierda">◀</button>
+      <button class="ctl move" data-a="right" type="button" aria-label="Derecha">▶</button>
+    </div>
+    <div class="ctl-group right">
+      <div class="ctl-def">
+        <button class="ctl dodge" data-a="dodge" type="button">ESQUIVA</button>
+        <button class="ctl block" data-a="block" type="button">GUARDIA</button>
+      </div>
+      <button class="ctl jab" data-a="jab" type="button">JAB</button>
+      <button class="ctl cross" data-a="cross" type="button">CRUZ<small>cruzado</small></button>
+      <button class="ctl upper" data-a="upper" type="button">UPPER</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   TSM — Todos Somos Muslera · motor de combate (sin render)
+   Lógica pura: se puede ejecutar en Node para calibrar a Oscar.
+   ============================================================ */
+(function (root) {
+  'use strict';
+
+  const ARENA = { left: 150, right: 810, floor: 440, minSep: 78 };
+  const ROUND_TIME = 60;
+  const ROUNDS = 3;
+
+  // Definición de golpes: windup (preparación), active (ventana de impacto),
+  // recover (recuperación), dmg, reach (alcance), stam (coste), stun (aturdimiento)
+  const MOVES = {
+    muslera: {
+      jab:   { windup: 0.17, active: 0.08, recover: 0.30, dmg: 5,  reach: 118, stam: 5,  stun: 0.34, push: 18 },
+      cross: { windup: 0.26, active: 0.10, recover: 0.42, dmg: 9,  reach: 124, stam: 9,  stun: 0.46, push: 26 },
+      upper: { windup: 0.21, active: 0.10, recover: 0.55, dmg: 15, reach: 96,  stam: 14, stun: 0.62, push: 34 },
+    },
+    oscar: {
+      jab:   { windup: 0.13, active: 0.08, recover: 0.22, dmg: 5,  reach: 126, stam: 4,  stun: 0.34, push: 18 },
+      cross: { windup: 0.21, active: 0.10, recover: 0.33, dmg: 9,  reach: 132, stam: 7,  stun: 0.46, push: 26 },
+      upper: { windup: 0.31, active: 0.10, recover: 0.46, dmg: 16, reach: 98,  stam: 11, stun: 0.62, push: 34 },
+    },
+  };
+
+  const PROFILES = {
+    muslera: {
+      name: 'MUSLERA', alias: 'EL PUEBLO', guard: 'low',
+      hp: 100, stamina: 100,
+      walk: 150, back: 118,
+      blockStartup: 0.16, blockReduce: 0.55, blockStamCost: 9,
+      dodgeDur: 0.36, dodgeInv: [0.04, 0.30], dodgeCost: 8, dodgeCooldown: 0.55,
+      regenIdle: 13, regenWalk: 6,
+      riseHp: [40, 30, 0],
+    },
+    oscar: {
+      name: 'OSCAR', alias: 'EL CAMPEÓN', guard: 'high',
+      hp: 100, stamina: 100,
+      walk: 168, back: 140,
+      blockStartup: 0.0, blockReduce: 0.85, blockStamCost: 5,
+      dodgeDur: 0.30, dodgeInv: [0.02, 0.26], dodgeCost: 6, dodgeCooldown: 0.45,
+      regenIdle: 15, regenWalk: 8,
+      riseHp: [36, 26, 0],
+    },
+  };
+
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  // Generador determinista (para simulaciones reproducibles)
+  function makeRng(seed) {
+    let s = (seed >>> 0) || 123456789;
+    return function () {
+      s ^= s << 13; s >>>= 0;
+      s ^= s >>> 17;
+      s ^= s << 5; s >>>= 0;
+      return (s >>> 0) / 4294967296;
+    };
+  }
+
+  class Fighter {
+    constructor(key, x, dir) {
+      const p = PROFILES[key];
+      this.key = key;
+      this.name = p.name;
+      this.alias = p.alias;
+      this.profile = p;
+      this.moves = MOVES[key];
+      this.x = x;
+      this.dir = dir;           // +1 mira a la derecha
+      this.hp = p.hp; this.maxHp = p.hp;
+      this.stamina = p.stamina; this.maxStamina = p.stamina;
+      this.state = 'idle';      // idle walk jab cross upper block dodge hit down rise taunt win lose
+      this.t = 0;               // tiempo en el estado actual
+      this.move = null;         // golpe en curso
+      this.hitDone = false;     // ya se resolvió el impacto de este golpe
+      this.stun = 0;
+      this.openT = 0;           // ventana en la que está "vendido" (contra)
+      this.invT = 0;            // invulnerabilidad breve tras combo largo
+      this.dodgeCd = 0;
+      this.blockT = 0;          // tiempo con el bloqueo levantado
+      this.knockdowns = 0;
+      this.comboTaken = 0;
+      this.comboTimer = 0;
+      this.landed = 0; this.thrown = 0; this.damageDealt = 0;
+      this.roundDamage = 0;
+      this.walkDir = 0;
+      this.fresh = 0;           // buff de la piscina (segundos)
+      this.sweat = 0;
+      this.rise = { need: 0, got: 0 };
+      this.count = 0;
+      this.downT = 0;
+      this.tauntT = 0;
+      this.tired = false;
+      this.face = 'normal';     // normal, hit, angry, tired, ko, happy
+      this.lastHitBy = null;
+      this.wobble = 0;
+    }
+    get busy() { return !['idle', 'walk', 'block'].includes(this.state); }
+    get attacking() { return this.move !== null; }
+    get phase() {
+      if (!this.move) return null;
+      const m = this.move;
+      if (this.t < m.windup) return 'windup';
+      if (this.t < m.windup + m.active) return 'active';
+      return 'recover';
+    }
+    setState(s) { this.state = s; this.t = 0; if (!['jab', 'cross', 'upper'].includes(s)) { this.move = null; } }
+  }
+
+  class Sim {
+    constructor(opts = {}) {
+      this.rng = makeRng(opts.seed || ((Math.random() * 1e9) | 0));
+      this.ai = Object.assign({
+        reactJab: 0.60, reactHeavy: 0.78, reactDelay: 0.10,
+        aggression: 1.0, comboBreak: 0.9, tauntEvery: [15, 25], tauntDur: 0.9,
+        preferDodge: 0.28, dmgScale: 0.7, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.5,
+      }, opts.ai || {});
+      this.events = [];
+      this.time = 0;
+      this.round = 1;
+      this.roundT = ROUND_TIME;
+      this.phase = 'ready';     // ready fight count roundEnd break over
+      this.phaseT = 0;
+      this.poolUsed = false;
+      this.scores = [];         // puntuación de jueces por asalto
+      this.result = null;
+      this.commentary = [];
+      this.p = new Fighter('muslera', 360, +1);
+      this.o = new Fighter('oscar', 600, -1);
+      this.brain = { nextThink: 0, plan: [], planT: 0, cooldown: 0.8, nextTaunt: 11, mode: 'neutral', seenAttack: null, sawAt: 0, backoff: 0, stepTarget: 0 };
+      this.hitstopT = 0;
+      this.slowmo = 1;
+      this.totalFightTime = 0;
+    }
+
+    emit(type, data) { this.events.push(Object.assign({ type, time: this.time }, data || {})); }
+    say(text, who) { this.emit('say', { text, who }); }
+
+    beginRound() {
+      this.phase = 'ready'; this.phaseT = 0;
+      this.roundT = ROUND_TIME;
+      this.p.x = 360; this.o.x = 600;
+      for (const f of [this.p, this.o]) {
+        f.setState('idle'); f.stun = 0; f.openT = 0; f.invT = 0; f.comboTaken = 0; f.roundDamage = 0; f.walkDir = 0; f.face = 'normal';
+      }
+      this.brain.plan = []; this.brain.cooldown = 1.2; this.brain.nextTaunt = this.time + 8 + this.rng() * 6;
+      this.emit('roundStart', { round: this.round });
+    }
+
+    applyBreakChoice(choice) {
+      const p = this.p, o = this.o;
+      // Oscar se recupera siempre como un profesional
+      o.hp = Math.min(o.maxHp, o.hp + 10); o.stamina = Math.min(o.maxStamina, o.stamina + 45);
+      if (choice === 'pool' && !this.poolUsed) {
+        this.poolUsed = true;
+        p.hp = Math.min(p.maxHp, p.hp + 30); p.stamina = p.maxStamina; p.fresh = 22;
+        this.emit('pool');
+      } else {
+        p.hp = Math.min(p.maxHp, p.hp + 10); p.stamina = Math.min(p.maxStamina, p.stamina + 40);
+      }
+    }
+
+    // ---------------------------------------------------------- update
+    update(dt, input) {
+      input = input || {};
+      this.events.length = 0;
+      if (this.hitstopT > 0) { this.hitstopT -= dt; return; }
+      dt *= this.slowmo;
+      this.time += dt;
+      this.phaseT += dt;
+      const p = this.p, o = this.o;
+
+      switch (this.phase) {
+        case 'ready':
+          if (this.phaseT > 1.6) { this.phase = 'fight'; this.phaseT = 0; this.emit('bell', { kind: 'start' }); }
+          break;
+        case 'fight':
+          this.roundT -= dt; this.totalFightTime += dt;
+          this.stepFighters(dt, input);
+          if (this.roundT <= 0 && this.phase === 'fight') this.endRound();
+          break;
+        case 'count':
+          this.stepCount(dt, input);
+          break;
+        case 'roundEnd':
+          this.stepFighters(dt, {});
+          if (this.phaseT > 2.2) { this.phase = 'break'; this.phaseT = 0; this.emit('break', { round: this.round }); }
+          break;
+        case 'break':
+        case 'over':
+          this.stepPassive(dt);
+          break;
+      }
+      // sudor / fatiga visual
+      for (const f of [p, o]) {
+        f.sweat = clamp(f.sweat + dt * (f.attacking ? 0.4 : 0.05) - dt * 0.08, 0, 1);
+        f.tired = f.stamina < 28;
+        if (f.fresh > 0) f.fresh -= dt;
+        if (f.wobble > 0) f.wobble -= dt;
+      }
+    }
+
+    stepPassive(dt) {
+      for (const f of [this.p, this.o]) { f.t += dt; }
+    }
+
+    // ---------------------------------------------------------- fighters
+    stepFighters(dt, input) {
+      const p = this.p, o = this.o;
+      const ai = this.thinkOscar(dt);
+      this.applyIntent(p, this.playerIntent(input), dt);
+      this.applyIntent(o, ai, dt);
+      this.advance(p, o, dt);
+      this.advance(o, p, dt);
+      this.separate();
+      // resolver impactos
+      this.resolveHit(p, o);
+      this.resolveHit(o, p);
+      // combos: expiran
+      for (const f of [p, o]) {
+        if (f.comboTimer > 0) { f.comboTimer -= dt; if (f.comboTimer <= 0) f.comboTaken = 0; }
+      }
+    }
+
+    playerIntent(input) {
+      return {
+        walk: (input.right ? 1 : 0) - (input.left ? 1 : 0),
+        jab: !!input.jab, cross: !!input.cross, upper: !!input.upper,
+        block: !!input.block, dodge: !!input.dodge,
+      };
+    }
+
+    applyIntent(f, it, dt) {
+      if (!it) return;
+      if (f.stun > 0 || ['hit', 'down', 'rise', 'taunt', 'win', 'lose'].includes(f.state)) return;
+      // en recuperación de un golpe no se puede hacer nada
+      if (f.move) return;
+      if (f.dodgeCd > 0) f.dodgeCd -= dt;
+      const stamFactor = f.stamina < 20 ? 0.6 : 1;
+      if (it.dodge && f.dodgeCd <= 0 && f.stamina >= 4) {
+        f.setState('dodge'); f.dodgeCd = f.profile.dodgeCooldown + f.profile.dodgeDur; f.stamina = Math.max(0, f.stamina - f.profile.dodgeCost);
+        this.emit('dodgeStart', { who: f.key });
+        return;
+      }
+      if (f.state === 'dodge') return;
+      const punch = it.upper ? 'upper' : it.cross ? 'cross' : it.jab ? 'jab' : null;
+      if (punch && f.stamina > 2) {
+        const m = f.moves[punch];
+        f.setState(punch); f.move = m; f.hitDone = false; f.thrown++;
+        f.stamina = Math.max(0, f.stamina - m.stam * (f.fresh > 0 ? 0.7 : 1));
+        f.blockT = 0;
+        this.emit('swing', { who: f.key, move: punch });
+        return;
+      }
+      if (it.block && f.stamina > 0) {
+        if (f.state !== 'block') { f.setState('block'); f.blockT = 0; }
+        f.walkDir = 0;
+        return;
+      } else if (f.state === 'block') { f.setState('idle'); }
+      if (it.walk) {
+        f.walkDir = it.walk;
+        if (f.state !== 'walk') f.setState('walk');
+        const back = (it.walk !== f.dir);
+        const sp = (back ? f.profile.back : f.profile.walk) * stamFactor * (f.fresh > 0 ? 1.12 : 1);
+        f.x = clamp(f.x + it.walk * sp * dt, ARENA.left, ARENA.right);
+      } else {
+        f.walkDir = 0;
+        if (f.state === 'walk') f.setState('idle');
+      }
+    }
+
+    advance(f, opp, dt) {
+      f.t += dt;
+      if (f.openT > 0) f.openT -= dt;
+      if (f.invT > 0) f.invT -= dt;
+      if (f.stun > 0) {
+        f.stun -= dt;
+        if (f.stun <= 0 && f.state === 'hit') { f.setState('idle'); f.face = 'normal'; }
+      }
+      const p = f.profile;
+      // Regeneración de aguante
+      if (f.state === 'idle') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenIdle * dt * (f.fresh > 0 ? 1.5 : 1));
+      else if (f.state === 'walk') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenWalk * dt);
+      else if (f.state === 'block') f.stamina = Math.max(0, f.stamina - 2 * dt);
+      if (f.state === 'block') { f.blockT += dt; if (f.stamina <= 0) f.setState('idle'); }
+      if (f.move) {
+        const m = f.move;
+        const slow = f.stamina < 35 ? 1 + (35 - f.stamina) / 35 * 0.45 : 1;
+        const total = (m.windup + m.active + m.recover) * slow;
+        // avanzamos en "tiempo normalizado" guardando t real
+        if (f.t >= total) { f.setState('idle'); f.face = 'normal'; }
+      }
+      if (f.state === 'dodge' && f.t >= p.dodgeDur) f.setState('idle');
+      if (f.state === 'taunt' && f.t >= f.tauntT) { f.setState('idle'); f.face = 'normal'; }
+      // encarar al rival
+      f.dir = opp.x > f.x ? 1 : -1;
+    }
+
+    separate() {
+      const p = this.p, o = this.o;
+      const d = o.x - p.x;
+      if (Math.abs(d) < ARENA.minSep) {
+        const push = (ARENA.minSep - Math.abs(d)) / 2;
+        const s = d >= 0 ? 1 : -1;
+        p.x = clamp(p.x - push * s, ARENA.left, ARENA.right);
+        o.x = clamp(o.x + push * s, ARENA.left, ARENA.right);
+      }
+    }
+
+    isInvulnerable(f) {
+      if (f.invT > 0) return true;
+      if (f.state === 'dodge') { const [a, b] = f.profile.dodgeInv; return f.t >= a && f.t <= b; }
+      return false;
+    }
+
+    resolveHit(att, def) {
+      if (!att.move || att.hitDone) return;
+      const m = att.move;
+      const slow = att.stamina < 35 ? 1 + (35 - att.stamina) / 35 * 0.45 : 1;
+      const tN = att.t / slow;
+      if (tN < m.windup) return;
+      att.hitDone = true;
+      const dist = Math.abs(def.x - att.x);
+      const reach = m.reach + (att.fresh > 0 ? 6 : 0);
+      if (dist > reach) { this.emit('whiff', { who: att.key, move: att.state }); return; }
+      if (def.state === 'down' || def.state === 'rise') return;
+      if (this.isInvulnerable(def)) {
+        // esquiva limpia: el atacante queda vendido
+        att.openT = 1.0; att.t -= 0.18; // se alarga la recuperación
+        this.emit('dodge', { who: def.key, by: att.key });
+        if (def.key === 'muslera') this.say('¡Esquiva de Muslera! ¡Oscar se ha quedado vendido!', 'muslera');
+        else this.say('Oscar lo ve venir. Ni se despeina.', 'oscar');
+        return;
+      }
+      let dmg = m.dmg * this.ai.globalDmg * (att.key === 'oscar' ? this.ai.dmgScale : 1);
+      if (att.stamina < 20) dmg *= 0.75;
+      if (att.fresh > 0) dmg *= 1.1;
+      let counter = false;
+      if (def.openT > 0) { dmg *= 1.6; counter = true; def.openT = 0; }
+      // bloqueo
+      const blocking = def.state === 'block' && def.blockT >= def.profile.blockStartup && !counter;
+      if (blocking) {
+        const perfect = def.blockT < def.profile.blockStartup + 0.14;
+        dmg *= (1 - def.profile.blockReduce);
+        def.stamina = Math.max(0, def.stamina - def.profile.blockStamCost);
+        def.x = clamp(def.x + att.dir * m.push * 0.5, ARENA.left, ARENA.right);
+        def.hp = Math.max(0, def.hp - dmg);
+        att.damageDealt += dmg; att.roundDamage += dmg;
+        this.emit('block', { who: def.key, by: att.key, perfect, x: def.x, dmg });
+        if (perfect && def.key === 'oscar') { att.openT = 0.45; this.emit('parry', { who: def.key }); }
+        if (def.stamina <= 0) { def.setState('idle'); def.wobble = 0.5; }
+        return;
+      }
+      // impacto limpio
+      def.hp = Math.max(0, def.hp - dmg);
+      att.landed++; att.damageDealt += dmg; att.roundDamage += dmg;
+      def.comboTaken++; def.comboTimer = 1.0;
+      def.lastHitBy = att.state;
+      def.setState('hit'); def.face = 'hit';
+      def.stun = m.stun * (counter ? 1.4 : 1);
+      def.move = null; def.blockT = 0;
+      def.x = clamp(def.x + att.dir * m.push * (counter ? 1.6 : 1), ARENA.left, ARENA.right);
+      att.x = clamp(att.x + att.dir * 4, ARENA.left, ARENA.right);
+      const hitX = def.x - def.dir * 10, hitY = m === att.moves.upper ? 290 : 300;
+      this.emit('hit', { who: def.key, by: att.key, move: att.state, dmg, counter, x: hitX, y: hitY, combo: def.comboTaken });
+      if (def.key === 'oscar') this.brain.seriousUntil = this.time + 3;
+      this.hitstopT = counter ? 0.09 : (att.state === 'upper' ? 0.07 : 0.035);
+      if (counter) this.say(def.key === 'oscar' ? '¡¡CONTRA DE MUSLERA!! ¡Eso ha dolido!' : '¡Contra de Oscar! Esto es lo que pasa cuando vas con las manos abajo.', att.key);
+      // combo largo: el que lo recibe sale despedido y respira
+      if (def.comboTaken >= 4) {
+        def.comboTaken = 0; def.invT = 0.5; def.x = clamp(def.x + att.dir * 40, ARENA.left, ARENA.right);
+        this.emit('comboEnd', { who: def.key });
+      }
+      if (def.hp <= 0) this.knockdown(def, att);
+    }
+
+    knockdown(def, att) {
+      def.knockdowns++;
+      def.setState('down'); def.stun = 0; def.face = 'ko'; def.comboTaken = 0;
+      def.count = 0; def.downT = 0;
+      def.rise = { need: def.key === 'muslera' ? 9 + 7 * (def.knockdowns - 1) : 0, got: 0 };
+      this.phase = 'count'; this.phaseT = 0;
+      this.hitstopT = 0.25;
+      this.emit('knockdown', { who: def.key, by: att.key, n: def.knockdowns });
+      if (def.key === 'oscar') this.say(def.knockdowns === 1 ? '¡¡OSCAR AL SUELO!! ¡El público no se lo cree!' : '¡¡OTRA VEZ AL SUELO!! ¡TODOS SOMOS MUSLERA!', 'muslera');
+      else this.say(def.knockdowns === 1 ? 'Muslera besa el césped. ¡Dale a los botones para levantarte!' : 'Muslera otra vez en el suelo... ¡machaca los botones!', 'oscar');
+      att.setState(att.key === 'oscar' ? 'taunt' : 'idle'); att.tauntT = 99; att.face = att.key === 'oscar' ? 'happy' : 'angry';
+      if (def.knockdowns >= 3) {
+        this.finish(att.key === 'muslera' ? 'player' : 'oscar', 'TKO');
+      }
+    }
+
+    stepCount(dt, input) {
+      const p = this.p, o = this.o;
+      const down = p.state === 'down' ? p : o;
+      const up = down === p ? o : p;
+      down.t += dt; up.t += dt; down.downT += dt;
+      const newCount = Math.floor(down.downT / 0.85);
+      if (newCount !== down.count) { down.count = newCount; this.emit('count', { n: newCount, who: down.key }); }
+      if (down === p) {
+        if (input.mash) { down.rise.got++; this.emit('mash', { got: down.rise.got, need: down.rise.need }); }
+        if (down.rise.got >= down.rise.need && down.count >= 3) { this.getUp(down, up); return; }
+        if (down.count >= 10) { this.finish('oscar', 'KO'); return; }
+      } else {
+        // Oscar se levanta solo, profesional, entre el 4 y el 7
+        if (!down.riseAt) down.riseAt = 4 + Math.floor(this.rng() * 4);
+        if (down.count >= down.riseAt) { down.riseAt = 0; this.getUp(down, up); return; }
+      }
+    }
+
+    getUp(down, up) {
+      down.hp = down.profile.riseHp[Math.min(down.knockdowns, 2) - 1] || 20;
+      down.stamina = Math.max(down.stamina, 45);
+      down.setState('rise'); down.stun = 0.9; down.face = 'tired';
+      down.invT = 1.4;
+      up.setState('idle'); up.tauntT = 0; up.face = 'normal';
+      // separar
+      const mid = (down.x + up.x) / 2;
+      down.x = clamp(mid - down.dir * 120, ARENA.left, ARENA.right);
+      up.x = clamp(mid + down.dir * 120, ARENA.left, ARENA.right);
+      this.phase = 'fight'; this.phaseT = 0;
+      this.brain.cooldown = 1.0;
+      this.emit('getUp', { who: down.key });
+      this.say(down.key === 'muslera' ? '¡Muslera se levanta! Esto es puro corazón.' : 'Oscar se levanta como si nada. Mala señal.', down.key);
+      setTimeoutSim(this, 0.9, () => { if (down.state === 'rise') { down.setState('idle'); down.face = 'normal'; } });
+    }
+
+    endRound() {
+      const p = this.p, o = this.o;
+      this.phase = 'roundEnd'; this.phaseT = 0;
+      this.emit('bell', { kind: 'end', round: this.round });
+      // puntuación de jueces (10-9 sistema; empate favorece a Oscar: son colegas)
+      let ps = 9, os = 10;
+      if (p.roundDamage > o.roundDamage * 1.15) { ps = 10; os = 9; }
+      if (o.knockdowns > 0 && this.kdThisRound(o)) { os = Math.min(os, 8); ps = 10; }
+      if (p.knockdowns > 0 && this.kdThisRound(p)) { ps = Math.min(ps, 8); os = 10; }
+      this.scores.push({ p: ps, o: os, pd: Math.round(p.roundDamage), od: Math.round(o.roundDamage) });
+      this.roundKd = { p: p.knockdowns, o: o.knockdowns };
+      for (const f of [p, o]) { f.setState('idle'); f.move = null; f.stun = 0; f.face = f.hp < 35 ? 'tired' : 'normal'; }
+      if (this.round >= ROUNDS) {
+        const sp = this.scores.reduce((a, s) => a + s.p, 0), so = this.scores.reduce((a, s) => a + s.o, 0);
+        this.finish(sp > so ? 'player' : 'oscar', 'decision');
+      }
+    }
+    kdThisRound(f) { const prev = this.roundKd || { p: 0, o: 0 }; return f.knockdowns > (f.key === 'muslera' ? prev.p : prev.o); }
+
+    nextRound() { this.round++; this.beginRound(); }
+
+    finish(winner, method) {
+      this.result = { winner, method, round: this.round, time: Math.round(ROUND_TIME - this.roundT), scores: this.scores.slice(), landed: { p: this.p.landed, o: this.o.landed }, thrown: { p: this.p.thrown, o: this.o.thrown }, kd: { p: this.p.knockdowns, o: this.o.knockdowns }, pool: this.poolUsed };
+      this.phase = 'over'; this.phaseT = 0;
+      const w = winner === 'player' ? this.p : this.o, l = winner === 'player' ? this.o : this.p;
+      w.setState('win'); w.face = 'happy'; w.move = null; w.stun = 0;
+      if (l.state !== 'down') { l.setState('lose'); l.face = 'tired'; } l.move = null;
+      this.emit('over', this.result);
+    }
+
+    // ---------------------------------------------------------- IA de Oscar
+    thinkOscar(dt) {
+      const o = this.o, p = this.p, b = this.brain, A = this.ai;
+      const intent = { walk: 0, jab: false, cross: false, upper: false, block: false, dodge: false };
+      if (o.state === 'down' || o.state === 'rise' || o.state === 'taunt') return intent;
+      const dist = Math.abs(p.x - o.x);
+      const toward = p.x > o.x ? 1 : -1;
+      b.cooldown -= dt;
+      if (b.backoff > 0) b.backoff -= dt;
+
+      // --- 1. Reacción a los golpes del jugador (ve el windup)
+      if (p.move && p.phase === 'windup' && b.seenAttack !== p.move) {
+        b.seenAttack = p.move; b.sawAt = this.time;
+        const heavy = p.state !== 'jab';
+        let pr = heavy ? A.reactHeavy : A.reactJab;
+        b.recent = (b.recent || []).concat(p.state).slice(-3);
+        if (b.recent.length === 3 && b.recent.every(x => x === p.state)) pr += 0.14; // lee el spam
+        if (this.time < (b.seriousUntil || 0)) pr += 0.10;                           // se pone serio tras encajar
+        if (o.stamina < 28) pr *= 0.5;           // cansado reacciona peor
+        if (o.hp < 40) pr *= 0.8;                // herido, más nervioso
+        if (o.move) pr *= 0.35;                  // si está pegando, no puede cubrirse tan fácil
+        b.reaction = this.rng() < pr ? (this.rng() < A.preferDodge && !o.move ? 'dodge' : 'block') : 'none';
+        b.reactAt = this.time + A.reactDelay * (0.7 + this.rng() * 0.6);
+      }
+      if (!p.move) b.seenAttack = null;
+      if (b.reaction && b.reaction !== 'none' && this.time >= b.reactAt) {
+        if (p.move && p.phase !== 'recover' && dist < p.move.reach + 30) {
+          if (b.reaction === 'dodge') { intent.dodge = true; b.reaction = null; b.plan = []; return intent; }
+          intent.block = true;
+          if (p.phase === 'recover' || !p.move) b.reaction = null;
+          return intent;
+        }
+        b.reaction = null;
+      }
+      // seguir bloqueando mientras el golpe sigue en el aire
+      if (o.state === 'block' && p.move && p.phase !== 'recover') { intent.block = true; return intent; }
+
+      // --- 2. Castigo: el jugador está vendido o en recuperación larga
+      const playerOpen = p.openT > 0 || (p.move && p.phase === 'recover' && p.t < p.move.windup + p.move.active + p.move.recover - 0.15 && p.state !== 'jab');
+      if (playerOpen && dist <= o.moves.cross.reach && !o.move && b.cooldown < 0.4) {
+        b.plan = p.openT > 0 ? (dist <= o.moves.upper.reach - 4 ? ['upper'] : ['cross']) : (this.rng() < 0.5 ? ['cross', 'jab'] : ['jab', 'cross']);
+        b.planT = 0; b.cooldown = 0.5;
+      }
+      // remate: el jugador está aturdido y a tiro
+      if (p.state === 'hit' && !o.move && !b.plan.length && dist <= o.moves.cross.reach && this.rng() < A.followUp) {
+        b.plan = [dist <= o.moves.upper.reach - 4 && this.rng() < 0.35 ? 'upper' : (this.rng() < 0.5 ? 'jab' : 'cross')];
+      }
+
+      // --- 3. Chulería: de vez en cuando baja la guardia y hace el tonto (ventana para Muslera)
+      if (this.time > b.nextTaunt && o.hp > p.hp + 20 && !o.move && dist > 100 && this.phase === 'fight') {
+        b.nextTaunt = this.time + A.tauntEvery[0] + this.rng() * (A.tauntEvery[1] - A.tauntEvery[0]);
+        o.setState('taunt'); o.tauntT = A.tauntDur; o.face = 'happy'; o.openT = A.tauntDur + 0.2;
+        this.emit('taunt', { who: 'oscar' });
+        this.say(['Oscar se pone a hacer el chulo. ¡AHORA, MUSLERA!', 'Oscar baja los brazos para mirar al público. ¡Es tu momento!', '¡Oscar está vacilando! ¡Pégale ya!'][Math.floor(this.rng() * 3)], 'oscar');
+        return intent;
+      }
+
+      // --- 4. Ejecutar el plan de combo
+      if (b.plan.length && !o.move) {
+        if (b.plan[0] === 'upper' && dist > o.moves.upper.reach + 30) b.plan[0] = 'cross';
+        const need = b.plan[0] === 'upper' ? o.moves.upper.reach - 6 : o.moves[b.plan[0]].reach - 2;
+        if (dist <= need) {
+          const mv = b.plan.shift(); intent[mv] = true;
+          if (b.plan.length && this.rng() > A.comboBreak) b.plan = [];
+          if (!b.plan.length) { b.cooldown = A.cooldownMin + this.rng() * A.cooldownRand / A.aggression; b.backoff = this.rng() < 0.45 ? 0.5 : 0; }
+          return intent;
+        }
+        intent.walk = toward; return intent;
+      }
+
+      // --- 5. Gestión de distancia
+      const tiredO = o.stamina < 30;
+      if (b.backoff > 0 || (tiredO && dist < 130)) { intent.walk = -toward; return intent; }
+      if (p.state === 'down') { intent.walk = -toward; return intent; }
+
+      // --- 6. Decidir un nuevo combo
+      if (b.cooldown <= 0 && !o.move && dist <= 150) {
+        if (dist > o.moves.cross.reach) { intent.walk = toward; return intent; }
+        const r = this.rng();
+        const aggr = A.aggression * (o.hp < 40 ? 1.25 : 1) * (tiredO ? 0.5 : 1);
+        if (r < 0.42 * aggr) b.plan = [['jab', 'cross'], ['jab', 'jab', 'cross'], ['cross', 'upper'], ['jab', 'upper'], ['jab'], ['cross'], ['jab', 'cross', 'upper']][Math.floor(this.rng() * 7)];
+        else if (r < 0.52 * aggr) b.plan = dist < o.moves.upper.reach ? ['upper'] : ['cross'];
+        else { b.cooldown = 0.25 + this.rng() * 0.4; intent.walk = this.rng() < 0.5 ? toward : -toward; }
+        return intent;
+      }
+      if (dist > 150) { intent.walk = toward; return intent; }
+      // bailar un poco
+      if (!b.stepTarget || this.rng() < 0.02) b.stepTarget = this.rng() < 0.5 ? 1 : -1;
+      if (dist < 95 && b.stepTarget === toward) b.stepTarget = -toward;
+      intent.walk = this.rng() < 0.6 ? b.stepTarget : 0;
+      return intent;
+    }
+  }
+
+  // mini temporizadores dentro de la simulación
+  function setTimeoutSim(sim, secs, fn) {
+    sim._timers = sim._timers || [];
+    sim._timers.push({ at: sim.time + secs, fn });
+    const orig = sim.update;
+    if (!sim._timerHooked) {
+      sim._timerHooked = true;
+      sim.update = function (dt, input) {
+        orig.call(sim, dt, input);
+        if (sim._timers.length) {
+          const due = sim._timers.filter(t => sim.time >= t.at);
+          sim._timers = sim._timers.filter(t => sim.time < t.at);
+          due.forEach(t => t.fn());
+        }
+      };
+    }
+  }
+
+  const api = { Sim, Fighter, MOVES, PROFILES, ARENA, ROUND_TIME, ROUNDS, makeRng };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.TSM_SIM = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ============================================================
+   TSM · audio sintetizado (sin ficheros externos)
+   ============================================================ */
+(function (root) {
+  'use strict';
+  const A = {
+    ctx: null, master: null, crowdGain: null, crowdTarget: 0.12, crowdLevel: 0.12, muted: false, ready: false,
+    init() {
+      if (this.ctx) { if (this.ctx.state === 'suspended') this.ctx.resume(); return; }
+      try {
+        const Ctx = root.AudioContext || root.webkitAudioContext; if (!Ctx) return;
+        this.ctx = new Ctx();
+        this.master = this.ctx.createGain(); this.master.gain.value = this.muted ? 0 : 0.9; this.master.connect(this.ctx.destination);
+        this.buildCrowd();
+        this.ready = true;
+      } catch (e) { this.ctx = null; }
+    },
+    setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.05); },
+    noiseBuffer(sec) {
+      const sr = this.ctx.sampleRate, buf = this.ctx.createBuffer(1, Math.floor(sr * sec), sr), d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      return buf;
+    },
+    buildCrowd() {
+      const c = this.ctx;
+      const src = c.createBufferSource(); src.buffer = this.noiseBuffer(3); src.loop = true;
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 520; lp.Q.value = 0.6;
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 0.9;
+      this.crowdGain = c.createGain(); this.crowdGain.gain.value = 0.12;
+      const lfo = c.createOscillator(); lfo.frequency.value = 0.35; const lg = c.createGain(); lg.gain.value = 0.03;
+      lfo.connect(lg); lg.connect(this.crowdGain.gain); lfo.start();
+      src.connect(lp); lp.connect(bp); bp.connect(this.crowdGain); this.crowdGain.connect(this.master); src.start();
+    },
+    crowd(level, instant) {
+      if (!this.ready) return;
+      this.crowdTarget = Math.max(0.05, Math.min(0.75, level));
+      this.crowdGain.gain.setTargetAtTime(this.crowdTarget, this.ctx.currentTime, instant ? 0.03 : 0.6);
+    },
+    crowdBurst(amount) {
+      if (!this.ready) return;
+      const c = this.ctx, g = this.crowdGain.gain, t = c.currentTime;
+      g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+      g.linearRampToValueAtTime(Math.min(0.9, this.crowdTarget + amount), t + 0.08);
+      g.setTargetAtTime(this.crowdTarget, t + 0.5, 1.2);
+    },
+    tone(freq, dur, type, vol, when, slideTo) {
+      const c = this.ctx, o = c.createOscillator(), g = c.createGain(); const t = when || c.currentTime;
+      o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || 0.3, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(this.master); o.start(t); o.stop(t + dur + 0.05);
+    },
+    noise(dur, vol, filterFreq, type, when) {
+      const c = this.ctx, s = c.createBufferSource(); s.buffer = this.noiseBuffer(dur + 0.05);
+      const f = c.createBiquadFilter(); f.type = type || 'lowpass'; f.frequency.value = filterFreq || 800;
+      const g = c.createGain(); const t = when || c.currentTime;
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      s.connect(f); f.connect(g); g.connect(this.master); s.start(t); s.stop(t + dur + 0.05);
+    },
+    bell(n) {
+      if (!this.ready) return; const c = this.ctx;
+      for (let i = 0; i < (n || 1); i++) {
+        const t = c.currentTime + i * 0.45;
+        [1480, 2210, 3300].forEach((f, k) => this.tone(f, 1.6 - k * 0.3, 'sine', 0.22 / (k + 1), t));
+        this.noise(0.05, 0.25, 4000, 'highpass', t);
+      }
+    },
+    punch(kind, blocked) {
+      if (!this.ready) return;
+      if (blocked) { this.noise(0.09, 0.5, 900, 'bandpass'); this.tone(180, 0.1, 'triangle', 0.25); return; }
+      const heavy = kind === 'upper' || kind === 'cross';
+      this.noise(heavy ? 0.16 : 0.1, heavy ? 0.9 : 0.6, heavy ? 500 : 900, 'lowpass');
+      this.tone(heavy ? 95 : 140, heavy ? 0.22 : 0.12, 'sine', heavy ? 0.6 : 0.35, 0, 40);
+      if (kind === 'upper') this.tone(60, 0.35, 'sine', 0.5, 0, 30);
+    },
+    counter() { if (!this.ready) return; this.punch('upper'); this.tone(880, 0.25, 'square', 0.12, 0, 1320); this.noise(0.3, 0.5, 300); },
+    whiff() { if (!this.ready) return; this.noise(0.14, 0.18, 2200, 'bandpass'); },
+    dodge() { if (!this.ready) return; this.noise(0.12, 0.12, 3000, 'highpass'); this.tone(600, 0.12, 'sine', 0.08, 0, 1100); },
+    knockdown() {
+      if (!this.ready) return; const c = this.ctx, t = c.currentTime;
+      this.noise(0.5, 1.0, 250); this.tone(70, 0.6, 'sine', 0.8, t, 28);
+      [220, 196, 174, 146].forEach((f, i) => this.tone(f, 0.5, 'sawtooth', 0.12, t + 0.25 + i * 0.22));
+      this.crowdBurst(0.5);
+    },
+    count(n) { if (!this.ready) return; this.tone(n >= 8 ? 520 : 440, 0.12, 'square', 0.15); },
+    getUp() { if (!this.ready) return; const t = this.ctx.currentTime; [330, 440, 554, 660].forEach((f, i) => this.tone(f, 0.25, 'triangle', 0.18, t + i * 0.09)); this.crowdBurst(0.35); },
+    splash() {
+      if (!this.ready) return; const t = this.ctx.currentTime;
+      this.noise(0.6, 0.8, 1500, 'lowpass', t); this.noise(1.2, 0.35, 600, 'lowpass', t + 0.2); this.tone(300, 0.4, 'sine', 0.2, t, 90);
+    },
+    bubbles(dur) {
+      if (!this.ready) return; const t = this.ctx.currentTime;
+      for (let i = 0; i < dur * 7; i++) this.tone(400 + Math.random() * 500, 0.08, 'sine', 0.05, t + i * (1 / 7) + Math.random() * 0.1, 900 + Math.random() * 400);
+    },
+    taunt() { if (!this.ready) return; const t = this.ctx.currentTime; [660, 880, 660].forEach((f, i) => this.tone(f, 0.15, 'square', 0.08, t + i * 0.12)); },
+    uiClick() { if (!this.ready) return; this.tone(900, 0.06, 'square', 0.08); },
+    win() {
+      if (!this.ready) return; const t = this.ctx.currentTime;
+      [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => { this.tone(f, 0.35, 'square', 0.14, t + i * 0.16); this.tone(f / 2, 0.4, 'triangle', 0.12, t + i * 0.16); });
+      this.crowdBurst(0.7);
+    },
+    lose() { if (!this.ready) return; const t = this.ctx.currentTime; [392, 370, 349, 294].forEach((f, i) => this.tone(f, 0.6, 'sawtooth', 0.12, t + i * 0.35)); },
+    intro() {
+      if (!this.ready) return; const t = this.ctx.currentTime;
+      const seq = [196, 196, 233, 262, 196, 196, 175, 196]; seq.forEach((f, i) => { this.tone(f, 0.22, 'sawtooth', 0.1, t + i * 0.24); this.tone(f * 2, 0.12, 'square', 0.05, t + i * 0.24); });
+      this.crowdBurst(0.4);
+    },
+  };
+  root.TSM_AUDIO = A;
+})(window);
+
+</script>
+<script>
+/* ============================================================
+   TSM · dibujo: escenario (la casa rural), público, luchadores,
+   piscina y retratos. Todo procedural sobre canvas.
+   ============================================================ */
+(function (root) {
+  'use strict';
+  const W = 960, H = 540, FLOOR = 440;
+  const TAU = Math.PI * 2;
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const ease = t => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  const easeOut = t => 1 - (1 - t) * (1 - t);
+  const easeIn = t => t * t;
+
+  // generador fijo para texturas (siempre el mismo escenario)
+  function rng(seed) { let s = seed; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+
+  const CHARS = {
+    oscar: {
+      skin: '#e4b48e', skinDark: '#c9956f', hair: '#1f1410', hairHi: '#3a2820', beard: '#24170f',
+      glove: '#56cfcb', gloveDark: '#1c1c1e', gloveHi: '#a8ecea', shorts: '#15151a', band: '#2b4aa3',
+      headR: 23, shoulderW: 54, hipW: 38, belly: 0, upper: 42, fore: 40, gloveR: 19, chestDef: 1,
+      brow: 'straight', hairStyle: 'short', beardStyle: 'trim',
+    },
+    muslera: {
+      skin: '#e8b792', skinDark: '#cf9a72', hair: '#35210f', hairHi: '#5a3a1e', beard: '#4a2f19',
+      glove: '#ec93c0', gloveDark: '#2a2a2e', gloveHi: '#f7c9df', shorts: '#141416', band: '#141416',
+      headR: 25, shoulderW: 62, hipW: 48, belly: 1, upper: 43, fore: 41, gloveR: 20, chestDef: 0,
+      brow: 'arched', hairStyle: 'wavy', beardStyle: 'full',
+    },
+  };
+
+  // ----------------------------------------------------------- helpers
+  function rr(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+  function ell(ctx, x, y, rx, ry, rot) { ctx.beginPath(); ctx.ellipse(x, y, Math.abs(rx), Math.abs(ry), rot || 0, 0, TAU); }
+  function limb(ctx, ax, ay, bx, by, cx, cy, width, color, outline) {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (outline) { ctx.strokeStyle = outline; ctx.lineWidth = width + 4; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke(); }
+    ctx.strokeStyle = color; ctx.lineWidth = width; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.stroke();
+  }
+  // IK de dos huesos: hombro S, objetivo T, longitudes l1,l2, lado del codo
+  function ik(sx, sy, tx, ty, l1, l2, side) {
+    let dx = tx - sx, dy = ty - sy, d = Math.hypot(dx, dy);
+    const maxD = l1 + l2 - 1; if (d > maxD) { dx *= maxD / d; dy *= maxD / d; d = maxD; }
+    const minD = Math.abs(l1 - l2) + 1; if (d < minD) { const k = minD / (d || 1); dx *= k; dy *= k; d = minD; }
+    const a = Math.acos(clamp((l1 * l1 + d * d - l2 * l2) / (2 * l1 * d), -1, 1));
+    const base = Math.atan2(dy, dx);
+    const ang = base + a * side;
+    return { ex: sx + Math.cos(ang) * l1, ey: sy + Math.sin(ang) * l1, tx: sx + dx, ty: sy + dy };
+  }
+
+  // ----------------------------------------------------------- escenario
+  let bgCanvas = null;
+  function makeBackground() {
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const ctx = c.getContext('2d');
+    const R = rng(7);
+    // cielo
+    let g = ctx.createLinearGradient(0, 0, 0, 200); g.addColorStop(0, '#070a14'); g.addColorStop(1, '#141a30');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, 200);
+    ctx.fillStyle = '#e9edff';
+    for (let i = 0; i < 60; i++) { const x = R() * W, y = R() * 120, s = R() * 1.4 + 0.3; ctx.globalAlpha = 0.3 + R() * 0.7; ctx.fillRect(x, y, s, s); }
+    ctx.globalAlpha = 1;
+    // luna/lámpara lejana
+    g = ctx.createRadialGradient(560, 48, 2, 560, 48, 60); g.addColorStop(0, 'rgba(255,240,200,0.9)'); g.addColorStop(0.1, 'rgba(255,230,170,0.5)'); g.addColorStop(1, 'rgba(255,220,150,0)');
+    ctx.fillStyle = g; ctx.fillRect(480, 0, 160, 120);
+    // tapia de piedra beige al fondo (fotos: pared alta detrás de la carpa)
+    g = ctx.createLinearGradient(0, 70, 0, 170); g.addColorStop(0, '#6b5a42'); g.addColorStop(1, '#8c775a');
+    ctx.fillStyle = g; ctx.fillRect(100, 72, 680, 110);
+    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 1;
+    for (let y = 86; y < 180; y += 14) { ctx.beginPath(); ctx.moveTo(100, y); ctx.lineTo(780, y); ctx.stroke(); }
+    for (let i = 0; i < 90; i++) { const x = 100 + R() * 680, y = 76 + Math.floor(R() * 7) * 14; ctx.fillStyle = `rgba(0,0,0,${0.05 + R() * 0.1})`; ctx.fillRect(x, y, 10 + R() * 30, 12); }
+    // grafiti del grupo en la tapia
+    ctx.save(); ctx.translate(430, 128); ctx.rotate(-0.04); ctx.font = 'bold 44px "Anton", Impact, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.lineWidth = 6; ctx.strokeStyle = 'rgba(20,10,30,0.55)'; ctx.strokeText('KLK', 0, 0); ctx.fillStyle = 'rgba(236,147,192,0.78)'; ctx.fillText('KLK', 0, 0);
+    ctx.font = 'bold 13px "Barlow Condensed", sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillText('TODOS SOMOS MUSLERA', 0, 28); ctx.restore();
+    // casa a la derecha: pared beige, tejado de teja y farol
+    g = ctx.createLinearGradient(760, 0, 960, 0); g.addColorStop(0, '#d8c39a'); g.addColorStop(1, '#b89c74');
+    ctx.fillStyle = g; ctx.fillRect(740, 90, 220, 330);
+    ctx.fillStyle = '#9a4a30';
+    for (let x = 730; x < 960; x += 18) { ell(ctx, x + 9, 92, 9, 5); ctx.fill(); }
+    ctx.fillStyle = '#7a3a24'; ctx.fillRect(730, 82, 230, 8);
+    ctx.fillStyle = '#5a2d1c'; ctx.fillRect(730, 96, 230, 3);
+    // farol de pared
+    g = ctx.createRadialGradient(905, 210, 4, 905, 210, 110); g.addColorStop(0, 'rgba(255,214,140,0.95)'); g.addColorStop(0.15, 'rgba(255,200,120,0.45)'); g.addColorStop(1, 'rgba(255,190,110,0)');
+    ctx.fillStyle = g; ctx.fillRect(790, 100, 170, 230);
+    ctx.fillStyle = '#2a211c'; rr(ctx, 897, 196, 16, 26, 3); ctx.fill(); ctx.fillStyle = '#ffe9b0'; rr(ctx, 900, 200, 10, 18, 2); ctx.fill();
+    // puerta de la casa (oscura)
+    ctx.fillStyle = '#2b2520'; rr(ctx, 790, 250, 60, 170, 4); ctx.fill();
+    ctx.fillStyle = '#3d342c'; rr(ctx, 796, 256, 48, 158, 3); ctx.fill();
+    // seto de hiedra a la izquierda con lámpara verde
+    ctx.fillStyle = '#0f2a12'; ctx.fillRect(0, 60, 150, 370);
+    for (let i = 0; i < 900; i++) {
+      const x = R() * 160, y = 60 + R() * 370; const d = Math.hypot(x - 70, y - 220);
+      const lit = clamp(1 - d / 190, 0, 1);
+      const gcol = `rgb(${Math.floor(20 + lit * 90)},${Math.floor(50 + lit * 150)},${Math.floor(22 + lit * 60)})`;
+      ctx.fillStyle = gcol; ell(ctx, x, y, 5 + R() * 6, 4 + R() * 5, R() * 3); ctx.fill();
+    }
+    g = ctx.createRadialGradient(70, 220, 2, 70, 220, 90); g.addColorStop(0, 'rgba(200,255,200,0.95)'); g.addColorStop(0.1, 'rgba(120,255,140,0.35)'); g.addColorStop(1, 'rgba(60,200,80,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 130, 170, 180);
+    // carpa / cerramiento de paneles crema con marcos de aluminio
+    ctx.fillStyle = '#2a2a2e'; ctx.fillRect(110, 150, 650, 18);            // losa/techo
+    ctx.fillStyle = '#4a4a50'; ctx.fillRect(110, 166, 650, 5);
+    const panels = [[122, 332], [338, 548], [554, 748]];
+    for (const [x0, x1] of panels) {
+      g = ctx.createLinearGradient(0, 172, 0, 415); g.addColorStop(0, '#efe3c4'); g.addColorStop(0.5, '#f6ecd3'); g.addColorStop(1, '#e2d2ae');
+      ctx.fillStyle = g; ctx.fillRect(x0, 172, x1 - x0, 243);
+      // lamas horizontales (persianas) sutiles
+      ctx.strokeStyle = 'rgba(120,100,60,0.13)'; ctx.lineWidth = 1;
+      for (let y = 178; y < 412; y += 6) { ctx.beginPath(); ctx.moveTo(x0 + 4, y); ctx.lineTo(x1 - 4, y); ctx.stroke(); }
+      // brillo cálido desde dentro
+      g = ctx.createRadialGradient((x0 + x1) / 2, 300, 10, (x0 + x1) / 2, 300, 160); g.addColorStop(0, 'rgba(255,230,170,0.25)'); g.addColorStop(1, 'rgba(255,230,170,0)');
+      ctx.fillStyle = g; ctx.fillRect(x0, 172, x1 - x0, 243);
+    }
+    // puerta corredera abierta (hueco oscuro) en el panel derecho
+    ctx.fillStyle = '#1b1a1f'; ctx.fillRect(700, 176, 46, 238);
+    ctx.fillStyle = 'rgba(255,220,160,0.08)'; ctx.fillRect(704, 180, 38, 230);
+    // marcos de aluminio
+    for (const x of [116, 334, 550, 752]) {
+      g = ctx.createLinearGradient(x, 0, x + 8, 0); g.addColorStop(0, '#9aa0a6'); g.addColorStop(0.4, '#e6eaee'); g.addColorStop(1, '#7f868c');
+      ctx.fillStyle = g; ctx.fillRect(x - 2, 160, 10, 258);
+    }
+    ctx.fillStyle = '#b9bfc5'; ctx.fillRect(112, 168, 648, 5); ctx.fillRect(112, 412, 648, 6);
+    ctx.fillStyle = '#8a9096'; ctx.fillRect(112, 418, 648, 2);
+    // árbol con guirnalda de luces a la derecha (sobre la casa)
+    ctx.fillStyle = '#3a2a1c'; ctx.fillRect(868, 300, 8, 120);
+    for (let i = 0; i < 120; i++) { const x = 800 + R() * 160, y = 120 + R() * 190; ctx.fillStyle = `rgba(${40 + R() * 40},${90 + R() * 90},${30 + R() * 40},0.9)`; ell(ctx, x, y, 7 + R() * 9, 5 + R() * 7, R() * 3); ctx.fill(); }
+    for (let i = 0; i < 26; i++) { const x = 790 + R() * 170, y = 130 + R() * 180; g = ctx.createRadialGradient(x, y, 0, x, y, 9); g.addColorStop(0, 'rgba(255,240,190,1)'); g.addColorStop(0.3, 'rgba(255,220,140,0.7)'); g.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = g; ctx.fillRect(x - 9, y - 9, 18, 18); }
+    // planta en maceta junto a la puerta
+    ctx.fillStyle = '#5a3b2a'; rr(ctx, 758, 378, 34, 40, 4); ctx.fill();
+    for (let i = 0; i < 40; i++) { const x = 755 + R() * 42, y = 330 + R() * 50; ctx.fillStyle = `rgb(${60 + R() * 50},${130 + R() * 80},${50 + R() * 40})`; ell(ctx, x, y, 6 + R() * 5, 4 + R() * 3, R() * 3); ctx.fill(); }
+    // pavimento beige delante de la casa
+    g = ctx.createLinearGradient(0, 415, 0, 470); g.addColorStop(0, '#cdbb96'); g.addColorStop(1, '#a89473');
+    ctx.fillStyle = g; ctx.fillRect(740, 415, 220, 55);
+    ctx.strokeStyle = 'rgba(80,60,40,0.3)'; for (let x = 740; x < 960; x += 44) { ctx.beginPath(); ctx.moveTo(x, 415); ctx.lineTo(x, 470); ctx.stroke(); }
+    // césped artificial
+    g = ctx.createLinearGradient(0, 415, 0, H); g.addColorStop(0, '#2f7f2c'); g.addColorStop(0.5, '#2e8a2e'); g.addColorStop(1, '#206a22');
+    ctx.fillStyle = g; ctx.fillRect(0, 415, 740, H - 415); ctx.fillRect(740, 470, 220, H - 470);
+    ctx.strokeStyle = 'rgba(0,0,0,0.12)';
+    for (let i = 0; i < 2600; i++) { const x = R() * W, y = 418 + R() * 122; if (x > 740 && y < 470) continue; ctx.strokeStyle = R() < 0.5 ? 'rgba(120,220,100,0.25)' : 'rgba(0,40,0,0.22)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R() - 0.5) * 3, y - 3 - R() * 4); ctx.stroke(); }
+    // luz de la lámpara verde sobre el césped y sombras ambientales
+    g = ctx.createRadialGradient(80, 430, 10, 80, 430, 220); g.addColorStop(0, 'rgba(120,255,120,0.18)'); g.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = g; ctx.fillRect(0, 415, 400, 125);
+    g = ctx.createRadialGradient(480, 440, 50, 480, 440, 520); g.addColorStop(0, 'rgba(255,235,190,0.10)'); g.addColorStop(1, 'rgba(0,0,0,0.35)'); ctx.fillStyle = g; ctx.fillRect(0, 415, W, 125);
+    return c;
+  }
+
+  // objetos en primer plano (ropa tirada, silla, toalla) - delante de los luchadores
+  function drawForeground(ctx) {
+    // montón de ropa (camisetas) en el césped
+    ctx.fillStyle = '#e8e1d2'; ell(ctx, 470, 505, 42, 14, 0.2); ctx.fill();
+    ctx.fillStyle = '#5577aa'; ell(ctx, 500, 512, 34, 12, -0.3); ctx.fill();
+    ctx.fillStyle = '#d9d0c0'; ell(ctx, 445, 515, 24, 9, 0.5); ctx.fill();
+    ctx.fillStyle = '#c8c0b0'; ell(ctx, 650, 520, 30, 9, 0.1); ctx.fill();
+    // chanclas
+    ctx.fillStyle = '#222'; ell(ctx, 300, 520, 14, 6, 0.3); ctx.fill(); ell(ctx, 322, 524, 14, 6, 0.1); ctx.fill();
+    // silla de madera en primer plano derecha (respaldo curvo)
+    drawChair(ctx, 880, 500, 1.15, true);
+  }
+
+  function drawChair(ctx, x, y, s, towel) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    ctx.strokeStyle = '#6b4a2b'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-18, 0); ctx.lineTo(-16, -40); ctx.moveTo(18, 0); ctx.lineTo(16, -40); ctx.moveTo(-12, -2); ctx.lineTo(-10, -40); ctx.moveTo(12, -2); ctx.lineTo(10, -40); ctx.stroke();
+    ctx.fillStyle = '#8b5e34'; rr(ctx, -22, -46, 44, 9, 4); ctx.fill();
+    ctx.strokeStyle = '#7a5130'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(-18, -44); ctx.quadraticCurveTo(-22, -95, 0, -98); ctx.quadraticCurveTo(22, -95, 18, -44); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-12, -58); ctx.lineTo(12, -88); ctx.moveTo(12, -58); ctx.lineTo(-12, -88); ctx.stroke();
+    if (towel) { ctx.fillStyle = '#efe6d4'; ctx.beginPath(); ctx.moveTo(-10, -96); ctx.lineTo(16, -94); ctx.lineTo(24, -40); ctx.lineTo(6, -44); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // ----------------------------------------------------------- público
+  const CROWD = [
+    { x: 95, y: 418, s: 0.82, pose: 'stand', shirt: '#1a1a1d', shorts: '#2a2a2a', hair: 'short', beard: true, extra: 'medal', skin: '#e2b08a' },
+    { x: 180, y: 420, s: 0.8, pose: 'sit', shirt: '#161618', shorts: '#8a8a8a', hair: 'buzz', beard: true, extra: 'dog', skin: '#dba67f' },
+    { x: 262, y: 418, s: 0.78, pose: 'sit', shirt: '#121214', shorts: '#4a4a4a', hair: 'short', beard: false, extra: 'cig', skin: '#e8bb94' },
+    { x: 690, y: 418, s: 0.78, pose: 'sit', shirt: '#141416', shorts: '#8b8577', hair: 'short', beard: true, extra: 'kanji', skin: '#e0ad84' },
+    { x: 790, y: 420, s: 0.8, pose: 'sit', shirt: '#1b1b1e', shorts: '#555', hair: 'buzz', beard: true, extra: 'phone', skin: '#d9a57c' },
+    { x: 900, y: 420, s: 0.84, pose: 'stand', shirt: '#17171a', shorts: '#f09a2a', hair: 'buzz', beard: true, extra: 'beer', skin: '#e3b28c', crocs: true },
+  ];
+
+  function drawSpectators(ctx, t, excite, cheer) {
+    for (let i = 0; i < CROWD.length; i++) {
+      const p = CROWD[i];
+      const ph = i * 1.7;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.scale(p.s, p.s);
+      const bob = Math.sin(t * 2.2 + ph) * 1.5 + (cheer > 0 ? Math.sin(t * 14 + ph) * cheer * 5 : 0);
+      if (p.pose === 'sit') drawChair(ctx, 0, 0, 1, false);
+      const seated = p.pose === 'sit';
+      const hipY = seated ? -50 : -92, shY = seated ? -118 : -160;
+      ctx.lineCap = 'round';
+      // piernas
+      ctx.strokeStyle = p.skin; ctx.lineWidth = 12;
+      if (seated) {
+        ctx.beginPath(); ctx.moveTo(-8, hipY); ctx.lineTo(-26, hipY + 8); ctx.lineTo(-30, -4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(8, hipY); ctx.lineTo(28, hipY + 10); ctx.lineTo(30, -4); ctx.stroke();
+        ctx.strokeStyle = p.shorts; ctx.lineWidth = 16; ctx.beginPath(); ctx.moveTo(-8, hipY); ctx.lineTo(-24, hipY + 6); ctx.moveTo(8, hipY); ctx.lineTo(24, hipY + 8); ctx.stroke();
+        ctx.fillStyle = '#222'; ell(ctx, -31, -2, 9, 4); ctx.fill(); ell(ctx, 31, -2, 9, 4); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.moveTo(-9, hipY); ctx.lineTo(-11, -2); ctx.moveTo(9, hipY); ctx.lineTo(13, -2); ctx.stroke();
+        ctx.strokeStyle = p.shorts; ctx.lineWidth = 18; ctx.beginPath(); ctx.moveTo(-9, hipY); ctx.lineTo(-10, hipY + 40); ctx.moveTo(9, hipY); ctx.lineTo(11, hipY + 40); ctx.stroke();
+        ctx.fillStyle = p.crocs ? '#f2d93a' : '#222'; ell(ctx, -12, -2, 10, 5); ctx.fill(); ell(ctx, 14, -2, 10, 5); ctx.fill();
+      }
+      // torso (camiseta)
+      ctx.fillStyle = p.shirt;
+      ctx.beginPath(); ctx.moveTo(-26, shY + bob); ctx.lineTo(26, shY + bob); ctx.lineTo(22, hipY + 6); ctx.lineTo(-22, hipY + 6); ctx.closePath(); ctx.fill();
+      if (p.extra === 'kanji') { ctx.fillStyle = '#d8d8d8'; ctx.font = 'bold 13px serif'; ctx.textAlign = 'center'; ctx.fillText('超', -6, shY + 30 + bob); ctx.fillText('源', 8, shY + 30 + bob); }
+      if (p.extra === 'medal') { ctx.strokeStyle = '#c33'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-8, shY + bob); ctx.lineTo(0, shY + 34 + bob); ctx.lineTo(8, shY + bob); ctx.stroke(); ctx.fillStyle = '#e6b800'; ell(ctx, 0, shY + 38 + bob, 6, 6); ctx.fill(); }
+      // brazos
+      const up = cheer > 0.3;
+      ctx.strokeStyle = p.skin; ctx.lineWidth = 10;
+      if (up) {
+        ctx.beginPath(); ctx.moveTo(-24, shY + 4 + bob); ctx.lineTo(-38, shY - 20 + bob); ctx.lineTo(-30, shY - 48 + bob + Math.sin(t * 12) * 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(24, shY + 4 + bob); ctx.lineTo(38, shY - 20 + bob); ctx.lineTo(32, shY - 48 + bob + Math.cos(t * 12) * 4); ctx.stroke();
+      } else if (seated) {
+        ctx.beginPath(); ctx.moveTo(-24, shY + 4 + bob); ctx.lineTo(-30, shY + 40); ctx.lineTo(-14, hipY + 4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(24, shY + 4 + bob); ctx.lineTo(30, shY + 40); ctx.lineTo(14, hipY + 4); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(-24, shY + 4 + bob); ctx.lineTo(-30, shY + 44); ctx.lineTo(-26, shY + 80); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(24, shY + 4 + bob); ctx.lineTo(32, shY + 40); ctx.lineTo(22, shY + 62); ctx.stroke();
+      }
+      ctx.strokeStyle = p.shirt; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(-24, shY + 4 + bob); ctx.lineTo(up ? -34 : -29, shY + (up ? -10 : 22) + bob); ctx.moveTo(24, shY + 4 + bob); ctx.lineTo(up ? 34 : 29, shY + (up ? -10 : 22) + bob); ctx.stroke();
+      // extras en las manos
+      if (p.extra === 'dog') { ctx.fillStyle = '#f4f1ea'; ell(ctx, 0, hipY - 6, 22, 14); ctx.fill(); ell(ctx, 16, hipY - 18, 11, 10); ctx.fill(); ctx.fillStyle = '#222'; ell(ctx, 22, hipY - 19, 2, 2); ctx.fill(); ell(ctx, 26, hipY - 15, 2.5, 1.8); ctx.fill(); ctx.fillStyle = '#f4f1ea'; ell(ctx, 10, hipY - 27, 4, 6, -0.4); ctx.fill(); ell(ctx, 20, hipY - 28, 4, 6, 0.3); ctx.fill(); }
+      if (p.extra === 'beer') { ctx.fillStyle = '#6b4a1a'; rr(ctx, 16, shY + 50, 10, 26, 3); ctx.fill(); ctx.fillStyle = '#c9a227'; rr(ctx, 18, shY + 46, 6, 8, 2); ctx.fill(); }
+      if (p.extra === 'phone') { ctx.fillStyle = '#111'; rr(ctx, 6, hipY - 2, 12, 20, 2); ctx.fill(); ctx.fillStyle = '#bfe8ff'; rr(ctx, 8, hipY, 8, 16, 1); ctx.fill(); }
+      if (p.extra === 'cig') { ctx.strokeStyle = '#eee'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-14, hipY + 2); ctx.lineTo(-20, hipY - 6); ctx.stroke(); ctx.fillStyle = '#f80'; ell(ctx, -21, hipY - 7, 1.5, 1.5); ctx.fill(); }
+      // cabeza
+      const hy = shY - 22 + bob;
+      ctx.fillStyle = p.skin; ell(ctx, 0, hy, 15, 17); ctx.fill();
+      if (p.beard) { ctx.fillStyle = 'rgba(40,25,15,0.85)'; ctx.beginPath(); ctx.ellipse(0, hy + 7, 14, 10, 0, 0, Math.PI); ctx.fill(); }
+      ctx.fillStyle = '#1c1410';
+      if (p.hair === 'buzz') { ctx.beginPath(); ctx.ellipse(0, hy - 7, 15, 11, 0, Math.PI, TAU); ctx.fill(); }
+      else { ctx.beginPath(); ctx.ellipse(0, hy - 9, 16, 12, 0, Math.PI, TAU); ctx.fill(); ctx.fillRect(-16, hy - 9, 32, 5); }
+      ctx.fillStyle = '#1a1a1a';
+      if (cheer > 0.3 || excite > 0.7) { ell(ctx, 0, hy + 7, 5, 4); ctx.fill(); } else { ctx.fillRect(-4, hy + 7, 8, 2); }
+      ell(ctx, -5, hy - 1, 2, 2); ctx.fill(); ell(ctx, 5, hy - 1, 2, 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // ----------------------------------------------------------- luchadores
+  function pose(f, t, opts) {
+    const C = CHARS[f.key];
+    const low = C.hairStyle === 'wavy'; // Muslera: guardia baja
+    const P = {
+      lean: 0, crouch: 0, twist: 0, headDx: 0, headDy: 0, headTilt: 0, lying: 0,
+      lead: low ? { x: 36, y: -122 } : { x: 40, y: -188 },
+      rear: low ? { x: 2, y: -112 } : { x: 18, y: -180 },
+      leadSide: 1, rearSide: 1, // lado del codo (1 = codo abajo/atrás)
+      footF: { x: 24, y: 0 }, footB: { x: -22, y: 0 },
+      mouthOpen: 0, armsUp: false,
+    };
+    const s = f.state, T = f.t;
+    const bobF = low ? 2.6 : 6.5, bobA = low ? 3 : 3.5;
+    const bob = Math.sin(t * bobF) * bobA;
+    P.crouch = 3 + bob;
+    if (low) { P.lead.x += Math.sin(t * 2.3) * 4; P.rear.y += Math.cos(t * 2.1) * 3; P.lean = 0.04; }
+    else { P.lead.y += Math.sin(t * 6.5) * 2; P.rear.y += Math.cos(t * 6.5) * 2; P.lean = 0.08; }
+    const m = f.move;
+    const slow = f.stamina < 35 ? 1 + (35 - f.stamina) / 35 * 0.45 : 1;
+    switch (s) {
+      case 'walk': {
+        const sw = Math.sin(t * 11);
+        P.footF.x = 24 + sw * 12 * f.walkDir * f.dir; P.footF.y = -Math.max(0, sw * f.walkDir * f.dir) * 6;
+        P.footB.x = -22 - sw * 12 * f.walkDir * f.dir; P.footB.y = -Math.max(0, -sw * f.walkDir * f.dir) * 6;
+        P.crouch = 4 + Math.abs(sw) * 3; break;
+      }
+      case 'jab': case 'cross': case 'upper': {
+        const tN = T / slow; const w = m.windup, a = m.active, r = m.recover;
+        let ph, p;
+        if (tN < w) { ph = 0; p = tN / w; } else if (tN < w + a) { ph = 1; p = (tN - w) / a; } else { ph = 2; p = clamp((tN - w - a) / r, 0, 1); }
+        const arm = s === 'jab' ? P.lead : P.rear;
+        const g0 = { x: arm.x, y: arm.y };
+        if (s === 'jab') {
+          const ext = { x: 98, y: -192 };
+          if (ph === 0) { arm.x = lerp(g0.x, g0.x - 8, easeOut(p)); arm.y = lerp(g0.y, -186, easeOut(p)); P.lean = 0.05; }
+          else if (ph === 1) { arm.x = ext.x; arm.y = ext.y; P.lean = 0.16; P.headDx = 4; P.footF.x = 30; }
+          else { arm.x = lerp(ext.x, g0.x, ease(p)); arm.y = lerp(ext.y, g0.y, ease(p)); P.lean = lerp(0.16, 0.05, p); }
+          P.leadSide = -1;
+        } else if (s === 'cross') {
+          const ext = { x: 104, y: -190 };
+          if (ph === 0) { P.twist = -0.3 * easeOut(p); arm.x = lerp(g0.x, g0.x - 10, p); arm.y = lerp(g0.y, -178, p); P.lean = -0.04; }
+          else if (ph === 1) { P.twist = 1; arm.x = ext.x; arm.y = ext.y; P.lean = 0.25; P.headDx = 6; P.footB.x = -14; P.crouch += 4; }
+          else { P.twist = lerp(1, 0, ease(p)); arm.x = lerp(ext.x, g0.x, ease(p)); arm.y = lerp(ext.y, g0.y, ease(p)); P.lean = lerp(0.25, 0.05, p); }
+          P.rearSide = -1;
+        } else {
+          const dip = { x: 18, y: -98 }, top = { x: 52, y: -226 };
+          if (ph === 0) { arm.x = lerp(g0.x, dip.x, easeOut(p)); arm.y = lerp(g0.y, dip.y, easeOut(p)); P.crouch += 16 * easeOut(p); P.lean = 0.2 * easeOut(p); P.twist = 0.3 * p; }
+          else if (ph === 1) { arm.x = lerp(dip.x, top.x, easeOut(p)); arm.y = lerp(dip.y, top.y, easeOut(p)); P.crouch -= 4; P.lean = lerp(0.2, -0.06, p); P.twist = 0.9; P.headDy = -4; }
+          else { arm.x = lerp(top.x, g0.x, ease(p)); arm.y = lerp(top.y, g0.y, ease(p)); P.twist = lerp(0.9, 0, p); P.lean = lerp(-0.06, 0.05, p); }
+          P.rearSide = 1;
+        }
+        P.mouthOpen = ph === 1 ? 0.6 : 0.2;
+        break;
+      }
+      case 'block': {
+        const k = low ? clamp(f.blockT / Math.max(0.01, f.profile.blockStartup), 0, 1) : 1;
+        P.lead = { x: lerp(P.lead.x, 52, k), y: lerp(P.lead.y, -198, k) };
+        P.rear = { x: lerp(P.rear.x, 38, k), y: lerp(P.rear.y, -186, k) };
+        P.leadSide = 1; P.rearSide = 1; P.crouch += 6; P.lean = 0.12; P.headDy = 4; break;
+      }
+      case 'dodge': {
+        const k = Math.sin(clamp(T / f.profile.dodgeDur, 0, 1) * Math.PI);
+        P.lean = -0.5 * k; P.crouch += 8 * k; P.headDx = -8 * k; P.headTilt = -0.2 * k; P.footB.x = -30; break;
+      }
+      case 'hit': {
+        const k = clamp(f.stun / 0.45, 0, 1);
+        const upperHit = f.lastHitBy === 'upper';
+        P.lean = -0.3 * k - (upperHit ? 0.15 : 0); P.headDx = -12 * k; P.headDy = upperHit ? -10 * k : 2; P.headTilt = (upperHit ? -0.5 : -0.3) * k;
+        P.lead.x -= 10 * k; P.rear.x -= 14 * k; P.lead.y += 6; P.rear.y += 8; P.crouch += 4; P.mouthOpen = 1; P.footB.x = -32; break;
+      }
+      case 'down': { P.lying = 1; P.mouthOpen = 0.8; P.lead = { x: 60, y: -150 }; P.rear = { x: -30, y: -165 }; P.leadSide = -1; P.rearSide = 1; P.footF = { x: 36, y: -8 }; P.footB = { x: -14, y: -4 }; break; }
+      case 'rise': { const k = 1 - ease(clamp(T / 0.9, 0, 1)); P.lying = k; P.crouch += 12 * k; P.lean = 0.3 * k; P.lead = { x: lerp(P.lead.x, 60, k), y: lerp(P.lead.y, -150, k) }; break; }
+      case 'taunt': {
+        const k = Math.sin(t * 9) * 0.5 + 0.5;
+        P.lead = { x: 56 + k * 6, y: -150 }; P.rear = { x: -44, y: -156 + k * 6 }; P.leadSide = -1; P.rearSide = -1;
+        P.lean = -0.18; P.headTilt = -0.25; P.headDy = -3; P.mouthOpen = 0.9; P.crouch = 2 + Math.abs(Math.sin(t * 9)) * 6;
+        P.footF.x = 30 + Math.sin(t * 9) * 8; P.footB.x = -28 - Math.sin(t * 9) * 8; break;
+      }
+      case 'win': {
+        const k = Math.abs(Math.sin(t * 7));
+        P.lead = { x: 34, y: -262 - k * 10 }; P.rear = { x: -24, y: -258 - k * 10 }; P.leadSide = -1; P.rearSide = 1; P.armsUp = true;
+        P.crouch = -k * 14 + 4; P.headDy = -2; P.mouthOpen = 0.8; P.headTilt = -0.12; break;
+      }
+      case 'lose': { P.lean = 0.35; P.crouch += 14; P.lead = { x: 34, y: -96 }; P.rear = { x: -2, y: -90 }; P.headDy = 10; P.headTilt = 0.4; P.leadSide = -1; P.rearSide = -1; break; }
+    }
+    if (f.wobble > 0 && s !== 'down') { P.lean += Math.sin(t * 30) * 0.06; P.headTilt += Math.sin(t * 25) * 0.1; }
+    if (opts && opts.entrance) { P.lead = low ? { x: 36, y: -120 } : { x: 28, y: -150 }; P.rear = { x: -6, y: -120 }; P.leadSide = -1; }
+    return P;
+  }
+
+  function drawFighter(ctx, f, t, opts) {
+    opts = opts || {};
+    const C = CHARS[f.key];
+    const P = pose(f, t, opts);
+    const dir = f.dir;
+    ctx.save();
+    ctx.translate(f.x, FLOOR);
+    // sombra
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ell(ctx, 0, 2, P.lying ? 90 : 46, 9); ctx.fill();
+    ctx.scale(dir, 1);
+    if (P.lying > 0) { ctx.translate(-P.lying * 40, 0); ctx.rotate(-P.lying * Math.PI / 2 * 0.98); ctx.translate(0, P.lying * 18); }
+    ctx.translate(0, P.crouch);
+    const hipY = -112, shY = -(176 + (C.headR - 23) * 2);
+    const outline = 'rgba(30,14,8,0.85)';
+    const skin = opts.wet ? C.skinDark : C.skin;
+    // --- piernas
+    const legW = C.belly ? 20 : 17;
+    const hipF = { x: 7, y: hipY }, hipB = { x: -7, y: hipY + 2 };
+    const lF = ik(hipF.x, hipF.y, P.footF.x, P.footF.y - 6, 58, 56, -1);
+    const lB = ik(hipB.x, hipB.y, P.footB.x, P.footB.y - 6, 58, 56, -1);
+    // pierna trasera (lejana)
+    limb(ctx, hipB.x, hipB.y, lB.ex, lB.ey, lB.tx, lB.ty, legW, C.skinDark, outline);
+    drawFoot(ctx, lB.tx, lB.ty, C.skinDark, -1);
+    // pantalón corto (muslos)
+    const shortsLen = C.belly ? 0.78 : 0.68;
+    ctx.save(); ctx.translate(0, 0); ctx.rotate(-P.lean * 0.25);
+    ctx.fillStyle = C.shorts; ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-C.hipW / 2 - 6, hipY - 10); ctx.lineTo(C.hipW / 2 + 6, hipY - 10);
+    ctx.lineTo(lerp(hipF.x, lF.ex, shortsLen) + 14, lerp(hipF.y, lF.ey, shortsLen) + 4);
+    ctx.lineTo(lerp(hipF.x, lF.ex, shortsLen) - 8, lerp(hipF.y, lF.ey, shortsLen) + 10);
+    ctx.lineTo(lerp(hipB.x, lB.ex, shortsLen) + 8, lerp(hipB.y, lB.ey, shortsLen) + 10);
+    ctx.lineTo(lerp(hipB.x, lB.ex, shortsLen) - 14, lerp(hipB.y, lB.ey, shortsLen) + 4);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = C.band; ctx.fillRect(-C.hipW / 2 - 6, hipY - 12, C.hipW + 12, 7);
+    if (C.belly) { ctx.fillStyle = '#ddd'; ctx.font = 'bold 7px sans-serif'; ctx.fillText('JOMA', 8, hipY + 18); }
+    ctx.restore();
+    // pierna delantera
+    limb(ctx, hipF.x, hipF.y, lF.ex, lF.ey, lF.tx, lF.ty, legW, skin, outline);
+    drawFoot(ctx, lF.tx, lF.ty, skin, 1);
+    // --- torso (inclinado)
+    ctx.save(); ctx.translate(0, hipY); ctx.rotate(P.lean); ctx.translate(0, -hipY);
+    const shWF = C.shoulderW / 2, hwF = C.hipW / 2;
+    const nearShX = -8 + P.twist * 22, farShX = 10 - P.twist * 6;
+    // brazo lejano (de guía / jab) detrás del torso
+    const aF = ik(farShX, shY + 2, P.lead.x, P.lead.y, C.upper, C.fore, P.leadSide);
+    limb(ctx, farShX, shY + 2, aF.ex, aF.ey, aF.tx, aF.ty, 15, C.skinDark, outline);
+    drawGlove(ctx, aF.tx, aF.ty, aF.ex, aF.ey, C, true);
+    // torso
+    ctx.fillStyle = skin; ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-shWF, shY + 4);
+    ctx.quadraticCurveTo(0, shY - 6, shWF, shY + 4);
+    if (C.belly) { ctx.quadraticCurveTo(shWF + 14, hipY - 30, hwF + 8, hipY - 6); ctx.lineTo(-hwF - 6, hipY - 6); ctx.quadraticCurveTo(-shWF - 10, hipY - 30, -shWF, shY + 4); }
+    else { ctx.quadraticCurveTo(shWF - 4, hipY - 30, hwF, hipY - 6); ctx.lineTo(-hwF, hipY - 6); ctx.quadraticCurveTo(-shWF + 4, hipY - 30, -shWF, shY + 4); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // sombreado del torso
+    ctx.fillStyle = 'rgba(90,40,20,0.14)';
+    ctx.beginPath(); ctx.moveTo(-shWF + 2, shY + 6); ctx.quadraticCurveTo(-shWF - 4, hipY - 40, -hwF - 2, hipY - 8); ctx.lineTo(-hwF + 10, hipY - 8); ctx.quadraticCurveTo(-shWF + 8, hipY - 40, -shWF + 10, shY + 6); ctx.closePath(); ctx.fill();
+    if (C.chestDef) {
+      ctx.strokeStyle = 'rgba(120,60,30,0.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-18, shY + 26); ctx.quadraticCurveTo(-4, shY + 38, 0, shY + 22); ctx.quadraticCurveTo(4, shY + 38, 18, shY + 26); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, shY + 40); ctx.lineTo(0, hipY - 16); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-10, shY + 50); ctx.lineTo(10, shY + 50); ctx.moveTo(-10, shY + 62); ctx.lineTo(10, shY + 62); ctx.stroke();
+    } else {
+      ctx.strokeStyle = 'rgba(120,60,30,0.3)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-14, shY + 28); ctx.quadraticCurveTo(0, shY + 36, 14, shY + 28); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-hwF + 2, hipY - 14); ctx.quadraticCurveTo(0, hipY - 2, hwF - 2, hipY - 14); ctx.stroke();
+      ctx.fillStyle = 'rgba(60,30,15,0.25)'; for (let i = 0; i < 6; i++) { ell(ctx, -6 + i * 3 - 4, shY + 24 + (i % 2) * 3, 1.2, 1.8); ctx.fill(); }
+    }
+    ctx.fillStyle = 'rgba(150,70,60,0.5)'; ell(ctx, -12, shY + 30, 2.2, 1.8); ctx.fill(); ell(ctx, 12, shY + 30, 2.2, 1.8); ctx.fill();
+    // toalla al hombro (entrada de Muslera)
+    if (opts.towel) { ctx.fillStyle = '#f3efe6'; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-shWF - 6, shY); ctx.lineTo(-shWF + 16, shY - 4); ctx.lineTo(-shWF + 20, shY + 70); ctx.lineTo(-shWF - 4, shY + 76); ctx.closePath(); ctx.fill(); ctx.stroke(); }
+    // --- cabeza
+    const hx = 6 + P.headDx, hy = shY - C.headR - 8 + P.headDy;
+    ctx.fillStyle = skin; ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-9, shY + 6); ctx.lineTo(-8, hy + C.headR * 0.5); ctx.lineTo(10, hy + C.headR * 0.5); ctx.lineTo(12, shY + 6); ctx.closePath(); ctx.fill(); ctx.stroke();
+    drawHead(ctx, f.key, hx, hy, C.headR, f.face, P, opts);
+    // medallas (entrada de Oscar)
+    if (opts.medals) {
+      for (let i = 0; i < 3; i++) {
+        const dy = i * 4, dx = (i - 1) * 7;
+        ctx.lineWidth = 4; ctx.strokeStyle = '#c62828'; ctx.beginPath(); ctx.moveTo(-14 + dx, shY + 2); ctx.lineTo(dx, shY + 46 + dy); ctx.lineTo(14 + dx, shY + 2); ctx.stroke();
+        ctx.lineWidth = 1.5; ctx.strokeStyle = '#fff'; ctx.beginPath(); ctx.moveTo(-14 + dx, shY + 2); ctx.lineTo(dx, shY + 46 + dy); ctx.lineTo(14 + dx, shY + 2); ctx.stroke();
+        ctx.fillStyle = '#f2c230'; ctx.strokeStyle = '#a07a10'; ctx.lineWidth = 1.5; ell(ctx, dx, shY + 52 + dy, 9, 9); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = '#d9a814'; ell(ctx, dx, shY + 52 + dy, 6, 6); ctx.fill();
+      }
+    }
+    // brazo cercano (trasero / cruzado)
+    const aN = ik(nearShX, shY + 6, P.rear.x, P.rear.y, C.upper, C.fore, P.rearSide);
+    limb(ctx, nearShX, shY + 6, aN.ex, aN.ey, aN.tx, aN.ty, 16, skin, outline);
+    drawGlove(ctx, aN.tx, aN.ty, aN.ex, aN.ey, C, false);
+    ctx.restore(); // torso
+    ctx.restore();
+  }
+
+  function drawFoot(ctx, x, y, color, side) {
+    ctx.fillStyle = color; ctx.strokeStyle = 'rgba(30,14,8,0.85)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x + 6, y + 4, 15, 6, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,0.15)'; for (let i = 0; i < 3; i++) { ell(ctx, x + 14 + i * 2.5 - 2, y + 4 + i * 0.5, 1.6, 1.6); ctx.fill(); }
+  }
+
+  function drawGlove(ctx, x, y, ex, ey, C, far) {
+    const r = C.gloveR * (far ? 0.95 : 1);
+    const ang = Math.atan2(y - ey, x - ex);
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    // muñequera / puño negro
+    ctx.fillStyle = C.gloveDark; ctx.strokeStyle = 'rgba(20,10,10,0.9)'; ctx.lineWidth = 2.5;
+    rr(ctx, -r - 6, -r * 0.62, 14, r * 1.24, 4); ctx.fill(); ctx.stroke();
+    // cuerpo del guante
+    ctx.fillStyle = C.glove;
+    ctx.beginPath(); ctx.ellipse(2, 0, r * 1.05, r * 0.92, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    // pulgar
+    ctx.beginPath(); ctx.ellipse(-2, r * 0.6, r * 0.5, r * 0.36, 0.4, 0, TAU); ctx.fill(); ctx.stroke();
+    // brillo
+    ctx.fillStyle = C.gloveHi; ctx.globalAlpha = 0.55; ell(ctx, 6, -r * 0.4, r * 0.4, r * 0.22, -0.3); ctx.fill(); ctx.globalAlpha = 1;
+    // costura
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(2, 0, r * 0.8, -1.3, 1.3); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawHead(ctx, key, hx, hy, r, face, P, opts) {
+    const C = CHARS[key]; opts = opts || {}; P = P || { headTilt: 0, mouthOpen: 0 };
+    const wet = !!opts.wet;
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(P.headTilt || 0);
+    const outline = 'rgba(30,14,8,0.85)';
+    // pelo trasero (volumen por detrás de la cabeza) para Muslera
+    if (C.hairStyle === 'wavy') {
+      ctx.fillStyle = wet ? '#1f140a' : C.hair; ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.ellipse(-6, -2, r * 1.15, r * (wet ? 1.05 : 1.22), 0, 0, TAU); ctx.fill(); ctx.stroke();
+    }
+    // oreja
+    ctx.fillStyle = opts.wet ? C.skinDark : C.skin; ctx.strokeStyle = outline; ctx.lineWidth = 2;
+    ell(ctx, -r * 0.82, 2, r * 0.26, r * 0.36); ctx.fill(); ctx.stroke();
+    // cara
+    ctx.fillStyle = opts.wet ? C.skinDark : C.skin; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(0, 0, r * 0.95, r * 1.08, 0, 0, TAU); ctx.fill(); ctx.stroke();
+    // barba
+    ctx.fillStyle = C.beard; ctx.strokeStyle = 'rgba(0,0,0,0)';
+    if (C.beardStyle === 'full') {
+      ctx.beginPath(); ctx.moveTo(-r * 0.9, -r * 0.05); ctx.quadraticCurveTo(-r * 1.0, r * 1.0, -r * 0.1, r * 1.3); ctx.quadraticCurveTo(r * 0.75, r * 1.28, r * 0.98, r * 0.42); ctx.quadraticCurveTo(r * 0.7, r * 0.5, r * 0.7, r * 0.3); ctx.quadraticCurveTo(r * 0.3, r * 0.75, -r * 0.3, r * 0.62); ctx.quadraticCurveTo(-r * 0.75, r * 0.5, -r * 0.9, -r * 0.05); ctx.closePath(); ctx.fill();
+      // bigote
+      ctx.beginPath(); ctx.moveTo(r * 0.2, r * 0.42); ctx.quadraticCurveTo(r * 0.5, r * 0.3, r * 0.74, r * 0.48); ctx.quadraticCurveTo(r * 0.5, r * 0.5, r * 0.2, r * 0.42); ctx.fill();
+    } else {
+      ctx.beginPath(); ctx.moveTo(-r * 0.88, 0); ctx.quadraticCurveTo(-r * 0.95, r * 0.95, -r * 0.1, r * 1.1); ctx.quadraticCurveTo(r * 0.7, r * 1.08, r * 0.96, r * 0.4); ctx.quadraticCurveTo(r * 0.72, r * 0.5, r * 0.66, r * 0.34); ctx.quadraticCurveTo(r * 0.3, r * 0.8, -r * 0.35, r * 0.62); ctx.quadraticCurveTo(-r * 0.7, r * 0.45, -r * 0.88, 0); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(r * 0.24, r * 0.42); ctx.quadraticCurveTo(r * 0.5, r * 0.32, r * 0.72, r * 0.46); ctx.quadraticCurveTo(r * 0.5, r * 0.48, r * 0.24, r * 0.42); ctx.fill();
+    }
+    // pelo
+    ctx.fillStyle = wet ? '#1f140a' : C.hair; ctx.strokeStyle = outline; ctx.lineWidth = 2.5;
+    if (C.hairStyle === 'short') {
+      ctx.beginPath(); ctx.moveTo(-r * 0.95, -r * 0.1);
+      ctx.quadraticCurveTo(-r * 1.0, -r * 1.25, r * 0.1, -r * 1.22);
+      ctx.quadraticCurveTo(r * 0.55, -r * 1.3, r * 0.72, -r * 1.05); // tupé hacia delante
+      ctx.quadraticCurveTo(r * 0.9, -r * 0.75, r * 0.78, -r * 0.6);
+      ctx.quadraticCurveTo(r * 0.4, -r * 0.5, 0, -r * 0.58);
+      ctx.quadraticCurveTo(-r * 0.5, -r * 0.58, -r * 0.75, -r * 0.3);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // lados degradados
+      ctx.fillStyle = 'rgba(40,25,18,0.55)'; ctx.beginPath(); ctx.moveTo(-r * 0.95, -r * 0.1); ctx.quadraticCurveTo(-r * 0.98, r * 0.25, -r * 0.86, r * 0.3); ctx.lineTo(-r * 0.75, -r * 0.3); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C.hairHi; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(-r * 0.3, -r * 1.05); ctx.quadraticCurveTo(r * 0.1, -r * 1.12, r * 0.45, -r * 1.0); ctx.stroke();
+    } else {
+      // melena ondulada con flequillo
+      ctx.beginPath(); ctx.moveTo(-r * 1.1, r * 0.2);
+      ctx.quadraticCurveTo(-r * 1.3, -r * 1.1, -r * 0.2, -r * (wet ? 1.2 : 1.36));
+      ctx.quadraticCurveTo(r * 0.6, -r * (wet ? 1.25 : 1.42), r * 0.95, -r * 0.8);
+      ctx.quadraticCurveTo(r * 1.05, -r * 0.55, r * 0.9, -r * 0.42);
+      // flequillo: mechones que caen sobre la frente
+      ctx.quadraticCurveTo(r * 0.8, -r * 0.25, r * 0.62, -r * 0.5);
+      ctx.quadraticCurveTo(r * 0.5, -r * 0.2, r * 0.3, -r * 0.55);
+      ctx.quadraticCurveTo(r * 0.1, -r * 0.28, -r * 0.1, -r * 0.6);
+      ctx.quadraticCurveTo(-r * 0.4, -r * 0.4, -r * 0.6, -r * 0.62);
+      ctx.quadraticCurveTo(-r * 0.9, -r * 0.5, -r * 0.95, -r * 0.1);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = wet ? '#3a2714' : C.hairHi; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-r * 0.7, -r * 0.95); ctx.quadraticCurveTo(-r * 0.2, -r * 1.2, r * 0.35, -r * 1.05); ctx.moveTo(-r * 0.5, -r * 0.75); ctx.quadraticCurveTo(0, -r * 0.95, r * 0.5, -r * 0.8); ctx.stroke();
+      if (wet) { ctx.fillStyle = 'rgba(160,210,255,0.8)'; for (let i = 0; i < 4; i++) { ell(ctx, -r * 0.6 + i * r * 0.45, r * 0.9 + ((i * 13) % 7), 1.6, 3); ctx.fill(); } }
+    }
+    // cejas
+    const browY = -r * 0.33;
+    ctx.strokeStyle = '#1a100a'; ctx.lineWidth = r * 0.14; ctx.lineCap = 'round';
+    let bAng = 0, bUp = 0;
+    if (face === 'angry' || face === 'normal' && C.brow === 'straight') bAng = 0.18;
+    if (face === 'hit' || face === 'tired') bUp = -r * 0.1;
+    if (face === 'ko') bUp = -r * 0.14;
+    if (face === 'happy') bUp = -r * 0.06;
+    if (face === 'angry') bAng = 0.35;
+    if (C.brow === 'arched' && face === 'normal') bUp = -r * 0.03;
+    ctx.beginPath(); ctx.moveTo(r * 0.12, browY + bUp + bAng * r * 0.2); ctx.lineTo(r * 0.62, browY + bUp - bAng * r * 0.1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-r * 0.5, browY + bUp - bAng * r * 0.15); ctx.lineTo(-r * 0.05, browY + bUp + bAng * r * 0.25); ctx.stroke();
+    // ojos
+    const eyes = [[r * 0.4, -r * 0.1, r * 0.17], [-r * 0.26, -r * 0.12, r * 0.15]];
+    for (const [ex, ey, er] of eyes) {
+      if (face === 'ko') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ex - er, ey - er); ctx.lineTo(ex + er, ey + er); ctx.moveTo(ex + er, ey - er); ctx.lineTo(ex - er, ey + er); ctx.stroke(); continue; }
+      if (face === 'hit') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ex - er, ey + er * 0.4); ctx.quadraticCurveTo(ex, ey - er * 0.6, ex + er, ey + er * 0.4); ctx.stroke(); continue; }
+      if (face === 'happy') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(ex - er, ey + er * 0.3); ctx.quadraticCurveTo(ex, ey - er * 0.9, ex + er, ey + er * 0.3); ctx.stroke(); continue; }
+      const open = face === 'tired' ? 0.5 : face === 'angry' ? 0.75 : 1;
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1a100a'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 0.8 * open, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3b2412'; ell(ctx, ex + er * 0.25, ey, er * 0.5, er * 0.5 * open); ctx.fill();
+      ctx.fillStyle = '#000'; ell(ctx, ex + er * 0.3, ey, er * 0.25, er * 0.25 * open); ctx.fill();
+      ctx.fillStyle = '#fff'; ell(ctx, ex + er * 0.42, ey - er * 0.2, er * 0.1, er * 0.1); ctx.fill();
+    }
+    // nariz
+    ctx.strokeStyle = 'rgba(90,45,25,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(r * 0.5, -r * 0.05); ctx.quadraticCurveTo(r * 0.78, r * 0.2, r * 0.56, r * 0.28); ctx.stroke();
+    // boca
+    const mo = Math.max(P.mouthOpen || 0, face === 'hit' ? 1 : face === 'ko' ? 0.7 : face === 'tired' ? 0.5 : face === 'happy' ? 0.3 : 0);
+    ctx.fillStyle = '#4a1a1a'; ctx.strokeStyle = '#2a0f0a'; ctx.lineWidth = 1.5;
+    if (face === 'happy' || (face === 'normal' && mo < 0.1 && C.brow === 'arched')) {
+      ctx.beginPath(); ctx.moveTo(r * 0.2, r * 0.52); ctx.quadraticCurveTo(r * 0.48, r * 0.72, r * 0.74, r * 0.5); if (face === 'happy') { ctx.quadraticCurveTo(r * 0.48, r * 0.62, r * 0.2, r * 0.52); ctx.fill(); } ctx.stroke();
+    } else if (mo > 0.1) {
+      ell(ctx, r * 0.46, r * 0.58, r * 0.2, r * 0.12 + mo * r * 0.2); ctx.fill(); ctx.stroke();
+      if (face === 'ko') { ctx.fillStyle = '#e07090'; ell(ctx, r * 0.5, r * 0.78, r * 0.1, r * 0.16); ctx.fill(); }
+      else { ctx.fillStyle = '#fff'; ctx.fillRect(r * 0.3, r * 0.5, r * 0.32, r * 0.07); }
+    } else {
+      ctx.beginPath(); ctx.moveTo(r * 0.22, r * 0.56); ctx.lineTo(r * 0.72, r * 0.54); ctx.stroke();
+    }
+    // mejillas enrojecidas / moratón
+    if (face === 'hit' || face === 'tired') { ctx.fillStyle = 'rgba(220,70,70,0.25)'; ell(ctx, r * 0.55, r * 0.2, r * 0.3, r * 0.2); ctx.fill(); }
+    ctx.restore();
+  }
+
+  // retrato para HUD y menús (cabeza grande, sin cuerpo)
+  function drawPortrait(ctx, key, x, y, size, face, opts) {
+    const C = CHARS[key]; const r = size / 2.6;
+    ctx.save(); ctx.translate(x, y);
+    const f = { key, face: face || 'normal' };
+    // cuello y hombros
+    ctx.fillStyle = C.skin; ctx.strokeStyle = 'rgba(30,14,8,0.85)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-r * 1.6, r * 2.2); ctx.quadraticCurveTo(-r * 0.5, r * 1.3, -r * 0.4, r * 1.1); ctx.lineTo(r * 0.5, r * 1.1); ctx.quadraticCurveTo(r * 0.6, r * 1.3, r * 1.7, r * 2.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+    drawHead(ctx, key, 0, 0, r, f.face, { headTilt: 0, mouthOpen: 0 }, opts || {});
+    ctx.restore();
+  }
+
+  // ----------------------------------------------------------- piscina (cinemática)
+  function drawPoolScene(ctx, t, f, phase) {
+    // phase: 0..1 progreso de la escena (caminar, agacharse, meter cabeza, salir, sacudirse)
+    const R = rng(3);
+    let g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#070a14'); g.addColorStop(1, '#141a30');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // casa al fondo y luces
+    ctx.fillStyle = '#b89c74'; ctx.fillRect(0, 120, W, 200);
+    ctx.fillStyle = '#9a4a30'; for (let x = 0; x < W; x += 18) { ell(ctx, x + 9, 122, 9, 5); ctx.fill(); }
+    for (let i = 0; i < 30; i++) { const x = (i * 97 + 20) % W, y = 150 + (i * 37) % 60; g = ctx.createRadialGradient(x, y, 0, x, y, 10); g.addColorStop(0, 'rgba(255,240,190,1)'); g.addColorStop(1, 'rgba(255,200,120,0)'); ctx.fillStyle = g; ctx.fillRect(x - 10, y - 10, 20, 20); }
+    // borde de piedra y agua
+    ctx.fillStyle = '#cdbb96'; ctx.fillRect(0, 320, W, 40);
+    ctx.fillStyle = '#b5a07c'; ctx.fillRect(0, 352, W, 8);
+    g = ctx.createLinearGradient(0, 360, 0, H); g.addColorStop(0, '#2aa7d6'); g.addColorStop(1, '#0b4f86');
+    ctx.fillStyle = g; ctx.fillRect(0, 360, W, H - 360);
+    // reflejos del agua
+    ctx.strokeStyle = 'rgba(200,240,255,0.35)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 40; i++) { const x = R() * W, y = 370 + R() * 160, w = 20 + R() * 60; const ph = Math.sin(t * 2 + i) * 6; ctx.beginPath(); ctx.moveTo(x + ph, y); ctx.quadraticCurveTo(x + w / 2 + ph, y - 4, x + w + ph, y); ctx.stroke(); }
+    // Muslera: camina (0-0.25), se arrodilla (0.25-0.4), mete la cabeza (0.4-0.7), sale y se sacude (0.7-1)
+    const walkK = clamp(phase / 0.25, 0, 1), kneel = clamp((phase - 0.25) / 0.15, 0, 1), dunk = clamp((phase - 0.4) / 0.1, 0, 1), under = phase > 0.42 && phase < 0.68, out = clamp((phase - 0.68) / 0.1, 0, 1), shake = phase > 0.78 ? Math.sin(t * 28) : 0;
+    const x = lerp(260, 470, easeOut(walkK));
+    const C = CHARS.muslera;
+    ctx.save(); ctx.translate(x, 352);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'; ell(ctx, 0, 2, 50, 8); ctx.fill();
+    const k = kneel; // 0 de pie, 1 arrodillado
+    const headDip = (dunk - out) * 70; // cuánto baja la cabeza
+    const lean = lerp(0, 1.1, k) + (under ? 0.3 : 0);
+    // piernas
+    ctx.lineCap = 'round';
+    limb(ctx, -8, -110 + k * 60, -30 + k * 10, -56 + k * 40, -34, -4, 20, C.skinDark, 'rgba(30,14,8,0.85)');
+    limb(ctx, 8, -110 + k * 60, 30 - k * 20, -56 + k * 36, 36, -4, 20, C.skin, 'rgba(30,14,8,0.85)');
+    ctx.fillStyle = C.shorts; rr(ctx, -30, -122 + k * 60, 60, 40, 8); ctx.fill();
+    // torso inclinado hacia el agua
+    ctx.save(); ctx.translate(0, -108 + k * 60); ctx.rotate(lean);
+    ctx.fillStyle = C.skin; ctx.strokeStyle = 'rgba(30,14,8,0.85)'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-34, 0); ctx.quadraticCurveTo(-40, -40, -31, -68); ctx.quadraticCurveTo(0, -78, 31, -68); ctx.quadraticCurveTo(44, -40, 34, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // brazos apoyados en el borde
+    const armT = { x: 40 + k * 30, y: -30 + k * 50 };
+    const a1 = ik(26, -62, armT.x, armT.y, 43, 41, 1), a2 = ik(-20, -58, armT.x - 24, armT.y + 6, 43, 41, 1);
+    limb(ctx, -20, -58, a2.ex, a2.ey, a2.tx, a2.ty, 15, C.skinDark, 'rgba(30,14,8,0.85)'); drawGlove(ctx, a2.tx, a2.ty, a2.ex, a2.ey, C, true);
+    limb(ctx, 26, -62, a1.ex, a1.ey, a1.tx, a1.ty, 16, C.skin, 'rgba(30,14,8,0.85)'); drawGlove(ctx, a1.tx, a1.ty, a1.ex, a1.ey, C, false);
+    // cabeza
+    ctx.save(); ctx.translate(6, -92 + headDip * 0.4); ctx.rotate(shake * 0.25);
+    const face = under ? 'happy' : phase > 0.7 ? 'happy' : 'tired';
+    drawHead(ctx, 'muslera', 0, 0, C.headR, face, { headTilt: 0, mouthOpen: under ? 0 : 0.3 }, { wet: phase > 0.5 });
+    ctx.restore();
+    ctx.restore();
+    ctx.restore();
+    // agua por delante (tapa la cabeza cuando está dentro) + salpicaduras
+    g = ctx.createLinearGradient(0, 360, 0, H); g.addColorStop(0, 'rgba(42,167,214,0.75)'); g.addColorStop(1, 'rgba(11,79,134,0.9)');
+    ctx.fillStyle = g; ctx.fillRect(0, 360, W, H - 360);
+    if (under || out > 0 && out < 1 || dunk > 0 && dunk < 1) {
+      const cx = x + 70;
+      for (let i = 0; i < 14; i++) { ctx.fillStyle = 'rgba(220,245,255,0.9)'; const a = i / 14 * TAU; const rad = 20 + Math.sin(t * 9 + i) * 10 + (under ? 10 : 30); ell(ctx, cx + Math.cos(a) * rad, 362 + Math.sin(a) * rad * 0.3 - (under ? 0 : 14), 4, 6); ctx.fill(); }
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 2; for (let i = 1; i < 4; i++) { ell(ctx, cx, 364, 20 * i + ((t * 40) % 20), 6 * i + ((t * 12) % 6)); ctx.stroke(); }
+    }
+    if (under) { // burbujas
+      ctx.fillStyle = 'rgba(255,255,255,0.7)'; for (let i = 0; i < 8; i++) { const yy = 380 - ((t * 60 + i * 23) % 60); ell(ctx, x + 60 + Math.sin(t * 5 + i) * 10 + i * 4, yy, 3, 3); ctx.fill(); }
+    }
+    if (phase > 0.78) { // gotas al sacudirse
+      ctx.fillStyle = 'rgba(190,230,255,0.9)'; for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; const rad = 40 + ((t * 160 + i * 20) % 60); ell(ctx, x + 6 + Math.cos(a) * rad, 352 - 150 + Math.sin(a) * rad * 0.6, 3, 4); ctx.fill(); }
+    }
+  }
+
+  // ----------------------------------------------------------- cinturones
+  const BELTS = [
+    { wins: 1, name: 'Cinturón Blanco', color: '#f1f1f1', trim: '#cfcfcf', text: 'Le has ganado a Oscar. Una vez. Nadie te creerá.' },
+    { wins: 3, name: 'Cinturón Amarillo', color: '#f2d33b', trim: '#b89a14', text: 'Tres victorias. Empieza a ser sospechoso.' },
+    { wins: 5, name: 'Cinturón Naranja', color: '#f08a2a', trim: '#b55e10', text: 'Cinco. Oscar ya pregunta quién eres.' },
+    { wins: 10, name: 'Cinturón Verde', color: '#3cb04b', trim: '#1f6f2c', text: 'Diez victorias. El pueblo se levanta.' },
+    { wins: 25, name: 'Cinturón Azul', color: '#2f6fd6', trim: '#1b3f8a', text: 'Veinticinco. Muslera ya entrena en serio.' },
+    { wins: 50, name: 'Cinturón Marrón', color: '#7a4a24', trim: '#4a2a12', text: 'Cincuenta. Oscar ha dejado el boxeo.' },
+    { wins: 100, name: 'Cinturón Negro KLK', color: '#161616', trim: '#d4af37', text: 'Cien victorias. Todos somos Muslera. Tú eres Muslera.' },
+  ];
+
+  function drawBelt(ctx, x, y, w, belt, locked) {
+    ctx.save(); ctx.translate(x, y);
+    const h = w * 0.22;
+    ctx.globalAlpha = locked ? 0.35 : 1;
+    ctx.fillStyle = belt.color; ctx.strokeStyle = belt.trim; ctx.lineWidth = 3;
+    rr(ctx, -w / 2, -h / 2, w, h, h / 2.5); ctx.fill(); ctx.stroke();
+    // placa central dorada
+    ctx.fillStyle = locked ? '#777' : '#e6c04a'; ctx.strokeStyle = locked ? '#555' : '#8a6a10'; ctx.lineWidth = 2;
+    ell(ctx, 0, 0, w * 0.14, h * 0.62); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = locked ? '#444' : '#6b4c0a'; ctx.font = `bold ${Math.round(h * 0.42)}px "Anton", Impact, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('TSM', 0, 1);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)'; rr(ctx, -w / 2 + 6, -h / 2 + 4, w - 12, h * 0.25, 4); ctx.fill();
+    ctx.restore();
+  }
+
+  root.TSM_DRAW = {
+    W, H, FLOOR, CHARS, BELTS, CROWD,
+    background() { if (!bgCanvas) bgCanvas = makeBackground(); return bgCanvas; },
+    drawForeground, drawSpectators, drawFighter, drawHead, drawPortrait, drawPoolScene, drawBelt, drawChair, rr, ell,
+  };
+})(window);
+
+</script>
+<script>
+/* ============================================================
+   TSM · bucle de juego, cámara, HUD, menús, entrada, progreso
+   ============================================================ */
+(function (root) {
+  'use strict';
+  const S = root.TSM_SIM, D = root.TSM_DRAW, AU = root.TSM_AUDIO;
+  const W = D.W, H = D.H, FLOOR = D.FLOOR;
+  const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const $ = id => document.getElementById(id);
+
+  // ----------------------------------------------------------- progreso
+  const SAVE_KEY = 'tsm_progreso_v1';
+  const save = { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0, muted: false };
+  function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); Object.assign(save, s); } catch (e) { } }
+  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } }
+  function currentBelt() { let b = null; for (const belt of D.BELTS) if (save.wins >= belt.wins) b = belt; return b; }
+  function nextBelt() { for (const belt of D.BELTS) if (save.wins < belt.wins) return belt; return null; }
+
+  // ----------------------------------------------------------- estado global
+  const G = {
+    canvas: null, ctx: null, cw: 0, ch: 0, dpr: 1,
+    screen: 'title',       // title intro fight pool corner over
+    sim: null, t: 0, acc: 0, last: 0,
+    cam: { x: 0, y: 0, scale: 1, vw: W, shake: 0, zoom: 1 },
+    fx: { parts: [], texts: [], flash: 0, slow: 0, ring: [] },
+    crowd: { excite: 0.2, cheer: 0 },
+    ticker: { text: '', t: 0, who: '' },
+    intro: { t: 0, step: 0 },
+    pool: { t: 0 },
+    corner: { t: 0 },
+    touch: false, paused: false,
+    input: { held: new Set(), pressed: new Set() },
+    stats: null, lastSayAt: 0, roundCard: { text: '', t: 0 },
+    results: null,
+  };
+
+  // ----------------------------------------------------------- utilidades de FX
+  function addText(text, x, y, opts) { G.fx.texts.push(Object.assign({ text, x, y, t: 0, life: 0.9, size: 26, color: '#fff', stroke: '#2a0a0a', vy: -40, rot: (Math.random() - 0.5) * 0.4 }, opts || {})); }
+  function burst(x, y, n, opts) {
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, sp = (opts && opts.speed || 180) * (0.4 + Math.random());
+      G.fx.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, t: 0, life: 0.5 + Math.random() * 0.5, r: 2 + Math.random() * 3, color: (opts && opts.color) || '#fff', g: 400, kind: (opts && opts.kind) || 'dot' });
+    }
+  }
+  function sweat(f) {
+    if (Math.random() < f.sweat * 0.25) G.fx.parts.push({ x: f.x + (Math.random() - 0.5) * 30, y: FLOOR - 215 + Math.random() * 20, vx: (Math.random() - 0.5) * 120, vy: -80 - Math.random() * 80, t: 0, life: 0.6, r: 2 + Math.random() * 1.5, color: 'rgba(180,220,255,0.9)', g: 500, kind: 'drop' });
+  }
+  function shake(a) { G.cam.shake = Math.max(G.cam.shake, a); }
+  function say(text, who) { G.ticker = { text, t: 0, who: who || '' }; G.lastSayAt = G.t; }
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  const LINES = {
+    hitO: ['Oscar conecta. Muslera ni lo ha visto venir.', 'Jab limpio de Oscar. Las manos, Muslera, LAS MANOS.', 'Oscar pega como quien firma un autógrafo.', 'Golpe de Oscar. Alguien en el público ha dicho "uf".', 'Oscar encuentra la cara de Muslera. No era difícil: la guardia está en el sótano.', 'Directo de Oscar. El perro ha mirado hacia otro lado.'],
+    hitP: ['¡Muslera conecta! ¡El público se levanta!', '¡Eso es, Muslera! ¡Con todo!', '¡Golpe del pueblo! ¡Oscar lo ha notado!', '¡Muslera encuentra el hueco! ¡Vamos!', '¡TOMA YA! Eso ha sonado en toda la urbanización.'],
+    blockO: ['Oscar bloquea como un profesional. Porque lo es.', 'Guardia de Oscar. Sólida como la tapia del fondo.', 'Oscar cubre. Ni se despeina.'],
+    blockP: ['Muslera se cubre tarde, pero se cubre.', '¡Bloqueo de Muslera! Alguien le ha enseñado algo.', 'Muslera sube las manos. Milagro en la casa rural.'],
+    whiffP: ['Muslera pega al aire. El aire está KO.', 'Muslera lanza y no hay nadie. Clásico.', 'Golpe al vacío. Oscar sonríe.'],
+    whiffO: ['Oscar falla. Esto no pasa a menudo.', 'Oscar pega al aire. Toma nota, Muslera.'],
+    upperP: ['¡¡UPPERCUT DE MUSLERA!! ¡Con las manos abajo le sale solo!', '¡GANCHO DESDE EL SÓTANO! ¡Oscar lo ha visto todo blanco!'],
+    upperO: ['¡Uppercut de Oscar! Muslera ha visto a su abuela.', 'Gancho de Oscar. Eso duele hasta en el público.'],
+    roundStart: { 1: ['¡Primer asalto! Oscar hace boxeo. Muslera hace... lo que puede.', '¡Empieza la pelea! Recordad: todos somos Muslera.'], 2: ['¡Segundo asalto! Muslera vuelve. Veremos si con cabeza o sin ella.', '¡Segundo asalto! Oscar sigue fresco. Muslera sigue siendo Muslera.'], 3: ['¡Último asalto! Lo que pase aquí se contará en el grupo durante años.', '¡Tercer asalto! Si Muslera sigue de pie es porque el césped es blando.'] },
+  };
+
+  // ----------------------------------------------------------- arranque
+  function boot() {
+    loadSave();
+    G.canvas = $('game'); G.ctx = G.canvas.getContext('2d');
+    G.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    document.body.classList.toggle('touch', G.touch);
+    AU.muted = !!save.muted; updateMuteBtn();
+    bindInput(); bindUI();
+    resize(); window.addEventListener('resize', resize);
+    showScreen('title'); refreshTitle();
+    requestAnimationFrame(loop);
+  }
+
+  function resize() {
+    const area = $('arena');
+    document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+    const r = area.getBoundingClientRect();
+    document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+    G.dpr = Math.min(2, window.devicePixelRatio || 1);
+    G.cw = Math.max(1, Math.round(r.width)); G.ch = Math.max(1, Math.round(r.height));
+    G.canvas.width = Math.round(G.cw * G.dpr); G.canvas.height = Math.round(G.ch * G.dpr);
+    G.canvas.style.width = G.cw + 'px'; G.canvas.style.height = G.ch + 'px';
+  }
+
+  function showScreen(name) {
+    for (const el of document.querySelectorAll('.overlay')) el.hidden = el.id !== 'ov-' + name;
+    setControls(['fight', 'intro', 'corner'].includes(G.screen) && G.touch);
+  }
+  function setControls(on) {
+    $('controls').classList.toggle('active', on); document.body.classList.toggle('playing', on && G.touch);
+    requestAnimationFrame(resize);
+  }
+
+  // ----------------------------------------------------------- entrada
+  const KEYS = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', KeyJ: 'jab', KeyZ: 'jab', KeyK: 'cross', KeyX: 'cross', KeyL: 'upper', KeyC: 'upper', Space: 'dodge', ArrowUp: 'dodge', KeyW: 'dodge', KeyS: 'block', ArrowDown: 'block', ShiftLeft: 'block', ShiftRight: 'block' };
+  function press(a) { if (!G.input.held.has(a)) { G.input.pressed.add(a); } G.input.held.add(a); }
+  function release(a) { G.input.held.delete(a); }
+  function bindInput() {
+    window.addEventListener('keydown', e => {
+      if (e.repeat) { if (KEYS[e.code]) e.preventDefault(); return; }
+      if (e.code === 'Escape') { togglePause(); return; }
+      if (e.code === 'Enter') { const btn = document.querySelector('.overlay:not([hidden]) .btn.primary'); if (btn) { btn.click(); e.preventDefault(); return; } }
+      if (G.screen === 'intro' && (e.code === 'Space' || e.code === 'Enter')) { skipIntro(); return; }
+      const a = KEYS[e.code]; if (a) { press(a); AU.init(); e.preventDefault(); }
+    });
+    window.addEventListener('keyup', e => { const a = KEYS[e.code]; if (a) release(a); });
+    window.addEventListener('blur', () => G.input.held.clear());
+    for (const b of document.querySelectorAll('#controls .ctl')) {
+      const a = b.dataset.a;
+      const down = e => { e.preventDefault(); AU.init(); press(a); b.classList.add('on'); if (G.screen === 'intro') skipIntro(); };
+      const up = e => { e.preventDefault(); release(a); b.classList.remove('on'); };
+      b.addEventListener('pointerdown', down); b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('pointerleave', up);
+      b.addEventListener('contextmenu', e => e.preventDefault());
+    }
+    $('arena').addEventListener('pointerdown', () => { AU.init(); if (G.screen === 'intro') skipIntro(); });
+  }
+  function readInput() {
+    const h = G.input.held, p = G.input.pressed;
+    const inp = { left: h.has('left'), right: h.has('right'), block: h.has('block'), jab: p.has('jab'), cross: p.has('cross'), upper: p.has('upper'), dodge: p.has('dodge'), mash: p.has('jab') || p.has('cross') || p.has('upper') || p.has('dodge') };
+    p.clear();
+    return inp;
+  }
+
+  // ----------------------------------------------------------- UI
+  function bindUI() {
+    $('btn-fight').onclick = () => { AU.init(); AU.uiClick(); startFight(); };
+    $('btn-howto').onclick = () => { AU.init(); AU.uiClick(); showScreen('howto'); };
+    $('btn-belts').onclick = () => { AU.init(); AU.uiClick(); renderBelts(); showScreen('belts'); };
+    for (const b of document.querySelectorAll('.btn-back')) b.onclick = () => { AU.uiClick(); showScreen('title'); refreshTitle(); };
+    $('btn-rest').onclick = () => { AU.uiClick(); chooseBreak('rest'); };
+    $('btn-pool').onclick = () => { AU.uiClick(); chooseBreak('pool'); };
+    $('btn-again').onclick = () => { AU.uiClick(); startFight(); };
+    $('btn-menu').onclick = () => { AU.uiClick(); G.screen = 'title'; showScreen('title'); refreshTitle(); };
+    $('btn-mute').onclick = () => { AU.init(); save.muted = !save.muted; AU.setMuted(save.muted); persist(); updateMuteBtn(); };
+    $('btn-resume').onclick = () => togglePause();
+    $('btn-quit').onclick = () => { G.paused = false; G.screen = 'title'; showScreen('title'); refreshTitle(); };
+    $('btn-pause').onclick = () => togglePause();
+    $('btn-reset').onclick = () => { if ($('btn-reset').dataset.armed) { Object.assign(save, { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0 }); persist(); renderBelts(); $('btn-reset').textContent = 'Progreso borrado'; delete $('btn-reset').dataset.armed; } else { $('btn-reset').dataset.armed = '1'; $('btn-reset').textContent = '¿Seguro? Pulsa otra vez'; } };
+  }
+  function updateMuteBtn() { $('btn-mute').textContent = save.muted ? '🔇' : '🔊'; $('btn-mute').setAttribute('aria-label', save.muted ? 'Activar sonido' : 'Silenciar'); }
+  function togglePause() {
+    if (!['fight', 'intro', 'corner'].includes(G.screen)) return;
+    G.paused = !G.paused; $('ov-pause').hidden = !G.paused; G.input.held.clear();
+  }
+  function refreshTitle() {
+    const belt = currentBelt(), next = nextBelt();
+    $('title-record').textContent = `${save.wins} ${save.wins === 1 ? 'victoria' : 'victorias'} · ${save.losses} ${save.losses === 1 ? 'derrota' : 'derrotas'}`;
+    $('title-belt').textContent = belt ? belt.name : 'Sin cinturón';
+    $('title-next').textContent = next ? `Siguiente: ${next.name} con ${next.wins} ${next.wins === 1 ? 'victoria' : 'victorias'}` : 'Has llegado al final. Eres leyenda.';
+    const c = $('title-beltcv'); const ctx = c.getContext('2d'); c.width = 220 * 2; c.height = 60 * 2; ctx.scale(2, 2); ctx.clearRect(0, 0, 220, 60);
+    if (belt) D.drawBelt(ctx, 110, 30, 200, belt, false); else { D.drawBelt(ctx, 110, 30, 200, { color: '#555', trim: '#333' }, true); }
+    const pc = $('title-portraits'); const pctx = pc.getContext('2d'); pc.width = 320 * 2; pc.height = 150 * 2; pctx.scale(2, 2); pctx.clearRect(0, 0, 320, 150);
+    D.drawPortrait(pctx, 'muslera', 95, 70, 110, 'normal'); pctx.save(); pctx.translate(320, 0); pctx.scale(-1, 1); D.drawPortrait(pctx, 'oscar', 95, 70, 105, 'angry'); pctx.restore();
+  }
+  function renderBelts() {
+    const list = $('belts-list'); list.innerHTML = '';
+    $('belts-summary').textContent = `${save.wins} victorias sobre Oscar · ${save.fights} combates · mejor racha ${save.bestStreak}`;
+    for (const belt of D.BELTS) {
+      const row = document.createElement('div'); row.className = 'belt-row' + (save.wins >= belt.wins ? ' unlocked' : '');
+      const cv = document.createElement('canvas'); cv.width = 180 * 2; cv.height = 50 * 2; cv.style.width = '180px'; cv.style.height = '50px';
+      const ctx = cv.getContext('2d'); ctx.scale(2, 2); D.drawBelt(ctx, 90, 25, 160, belt, save.wins < belt.wins);
+      const info = document.createElement('div'); info.className = 'belt-info';
+      info.innerHTML = `<strong>${belt.name}</strong><span>${belt.wins} ${belt.wins === 1 ? 'victoria' : 'victorias'}${save.wins >= belt.wins ? ' · conseguido' : ` · te faltan ${belt.wins - save.wins}`}</span><em>${save.wins >= belt.wins ? belt.text : ''}</em>`;
+      row.appendChild(cv); row.appendChild(info); list.appendChild(row);
+    }
+    $('btn-reset').textContent = 'Borrar progreso'; delete $('btn-reset').dataset.armed;
+  }
+
+  // ----------------------------------------------------------- flujo de combate
+  function startFight() {
+    G.sim = new S.Sim({});
+    G.sim.p.x = 60; G.sim.o.x = 1000; // entran desde fuera
+    G.screen = 'intro'; G.intro = { t: 0, step: 0 }; G.paused = false; $('ov-pause').hidden = true;
+    G.fx.parts.length = 0; G.fx.texts.length = 0; G.crowd.excite = 0.3; G.crowd.cheer = 0;
+    G.cam.x = 200; G.cam.vw = W; G.stats = { startT: G.t };
+    showScreen('none'); setControls(G.touch);
+    AU.init(); AU.crowd(0.25); AU.intro();
+    say('Casa rural. Noche. Dos amigos, dos pares de guantes y ninguna idea buena.', '');
+  }
+  function skipIntro() { if (G.screen === 'intro' && G.intro.t > 0.5) { G.intro.t = 99; } }
+
+  function beginRound1() {
+    G.screen = 'fight'; G.sim.beginRound(); G.sim.p.face = 'normal'; G.sim.o.face = 'normal';
+    G.roundCard = { text: 'ASALTO 1', t: 0 }; AU.crowd(0.3);
+    say(pick(LINES.roundStart[1]), '');
+  }
+
+  function chooseBreak(choice) {
+    const sim = G.sim; if (!sim || sim.phase !== 'break') return;
+    showScreen('none');
+    if (choice === 'pool' && !sim.poolUsed) {
+      sim.applyBreakChoice('pool'); save.pool++; persist();
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, bubbled: false }; AU.crowd(0.15);
+      say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
+    } else {
+      sim.applyBreakChoice('rest');
+      G.screen = 'corner'; G.corner = { t: 0 }; say('Muslera descansa en la esquina. Oscar ni se ha sentado.', '');
+    }
+  }
+  function startNextRound() {
+    const sim = G.sim; sim.nextRound();
+    G.screen = 'fight'; G.roundCard = { text: 'ASALTO ' + sim.round, t: 0 };
+    say(pick(LINES.roundStart[sim.round] || LINES.roundStart[3]), '');
+    AU.crowd(0.3);
+    setControls(G.touch);
+  }
+
+  function showBreak() {
+    const sim = G.sim;
+    const sc = sim.scores[sim.scores.length - 1];
+    $('break-title').textContent = `FIN DEL ASALTO ${sim.round}`;
+    $('break-score').innerHTML = `<div class="sc"><span>Muslera</span><b>${sc.p}</b><small>${sc.pd} de daño</small></div><div class="sc"><span>Oscar</span><b>${sc.o}</b><small>${sc.od} de daño</small></div>`;
+    const judgesMsg = sc.p > sc.o ? '¡Muslera gana el asalto! Los jueces no se lo creen.' : sc.p === sc.o ? 'Asalto igualado. Y los jueces son amigos de Oscar.' : 'Asalto para Oscar. Los jueces lo tenían claro antes de empezar.';
+    $('break-judges').textContent = judgesMsg;
+    const hp = Math.round(sim.p.hp), st = Math.round(sim.p.stamina);
+    $('break-state').textContent = `Muslera: ${hp}% de vida · ${st}% de aguante`;
+    $('btn-pool').disabled = sim.poolUsed; $('btn-pool').querySelector('small').textContent = sim.poolUsed ? 'Ya la has usado. Solo una vez por pelea.' : '+30 vida · aguante al máximo · 20 s fresquito';
+    showScreen('break');
+  }
+
+  function endFight(res) {
+    G.screen = 'over'; G.results = res;
+    save.fights++;
+    if (res.winner === 'player') { save.wins++; save.streak++; save.bestStreak = Math.max(save.bestStreak, save.streak); if (res.method !== 'decision') save.kos++; else save.decisions++; const secs = (res.round - 1) * 60 + res.time; if (!save.fastest || secs < save.fastest) save.fastest = secs; }
+    else { save.losses++; save.streak = 0; }
+    save.knockedDown += res.kd.p;
+    persist();
+    AU.crowd(res.winner === 'player' ? 0.7 : 0.35);
+    if (res.winner === 'player') { AU.win(); G.crowd.cheer = 1; for (let i = 0; i < 6; i++) setTimeout(() => burst(200 + Math.random() * 560, 120 + Math.random() * 160, 40, { color: pick(['#f2d33b', '#ec93c0', '#56cfcb', '#fff', '#f08a2a']), speed: 260 }), i * 350); }
+    else AU.lose();
+    setTimeout(showResults, 2600);
+  }
+
+  function showResults() {
+    const r = G.results; if (!r || G.screen !== 'over') return;
+    const won = r.winner === 'player';
+    $('res-title').textContent = won ? '¡¡HAS GANADO A OSCAR!!' : 'OSCAR GANA';
+    $('res-title').className = won ? 'win' : 'lose';
+    const method = r.method === 'decision' ? 'por decisión de los jueces' : r.method === 'KO' ? 'por KO' : 'por KO técnico (tres caídas)';
+    const when = r.method === 'decision' ? 'tras tres asaltos' : `en el asalto ${r.round}, minuto ${String(Math.floor(r.time / 60)).padStart(1, '0')}:${String(r.time % 60).padStart(2, '0')}`;
+    $('res-sub').textContent = `${won ? 'Muslera' : 'Oscar'} gana ${method} ${when}.`;
+    const acc = (l, t) => t ? Math.round(100 * l / t) : 0;
+    let rows = `<tr><th></th><th>Muslera</th><th>Oscar</th></tr>`;
+    rows += `<tr><td>Golpes lanzados</td><td>${r.thrown.p}</td><td>${r.thrown.o}</td></tr>`;
+    rows += `<tr><td>Golpes conectados</td><td>${r.landed.p}</td><td>${r.landed.o}</td></tr>`;
+    rows += `<tr><td>Precisión</td><td>${acc(r.landed.p, r.thrown.p)}%</td><td>${acc(r.landed.o, r.thrown.o)}%</td></tr>`;
+    rows += `<tr><td>Caídas</td><td>${r.kd.p}</td><td>${r.kd.o}</td></tr>`;
+    if (r.scores.length) rows += `<tr><td>Tarjetas</td><td>${r.scores.map(s => s.p).join(' · ')}</td><td>${r.scores.map(s => s.o).join(' · ')}</td></tr>`;
+    rows += `<tr><td>Piscina</td><td colspan="2">${r.pool ? 'Cabeza mojada, sí' : 'No la ha usado'}</td></tr>`;
+    $('res-stats').innerHTML = rows;
+    const belt = currentBelt(), next = nextBelt();
+    const justUnlocked = won && D.BELTS.find(b => b.wins === save.wins);
+    $('res-belt').hidden = !justUnlocked;
+    if (justUnlocked) { const c = $('res-beltcv'); const ctx = c.getContext('2d'); c.width = 260 * 2; c.height = 70 * 2; ctx.scale(2, 2); D.drawBelt(ctx, 130, 35, 240, justUnlocked, false); $('res-beltname').textContent = `¡Nuevo cinturón! ${justUnlocked.name}`; $('res-belttext').textContent = justUnlocked.text; }
+    $('res-progress').textContent = won ? `Victorias totales: ${save.wins}. ${next ? `Siguiente cinturón: ${next.name} (${next.wins - save.wins} más).` : ''}` : `Derrotas: ${save.losses}. Victorias: ${save.wins}. ${next ? `Para el ${next.name} te faltan ${next.wins - save.wins}.` : ''} Todos somos Muslera.`;
+    $('res-quote').textContent = won ? pick(['Oscar pide la revancha. Y un abogado.', 'El grupo KLK no da crédito.', 'Alguien lo ha grabado. Esta vez sí.', 'Muslera ha ganado con las manos abajo. Lección para todos.']) : pick(['Muslera sigue sin subir las manos. Y sigue sin ganar.', 'Oscar ni ha sudado. Bueno, un poco.', 'La piscina está ahí para algo, Muslera.', 'Oscar: "¿Otra?" Muslera: "Dame un minuto."', 'El perro del público también lo vio venir.']);
+    showScreen('over');
+  }
+
+  // ----------------------------------------------------------- eventos del motor
+  function handleEvents(sim) {
+    for (const e of sim.events) {
+      switch (e.type) {
+        case 'bell': AU.bell(e.kind === 'end' ? 3 : 1); if (e.kind === 'end') { say(`Fin del asalto ${e.round}. Los dos a su esquina. Muslera a por aire.`, ''); G.crowd.cheer = 0.4; } break;
+        case 'swing': if (e.who === 'muslera' && e.move === 'upper') { } break;
+        case 'whiff': AU.whiff(); if (Math.random() < 0.35) say(pick(e.who === 'muslera' ? LINES.whiffP : LINES.whiffO), e.who); break;
+        case 'hit': {
+          const byP = e.by === 'muslera';
+          if (e.counter) AU.counter(); else AU.punch(e.move);
+          shake(e.counter ? 14 : e.move === 'upper' ? 10 : e.move === 'cross' ? 6 : 3);
+          burst(e.x, e.y, e.counter ? 22 : 10, { color: byP ? '#ffe36b' : '#ffffff', speed: e.counter ? 320 : 180 });
+          G.fx.ring.push({ x: e.x, y: e.y, t: 0, big: e.counter || e.move === 'upper' });
+          const word = e.counter ? '¡CONTRA!' : e.move === 'upper' ? pick(['¡UPPER!', '¡GANCHO!']) : pick(['¡PUM!', '¡PAM!', '¡ZAS!', '¡TOMA!', '¡CLONC!']);
+          addText(word, e.x, e.y - 40, { size: e.counter ? 48 : e.move === 'upper' ? 40 : 28, color: byP ? '#ffe36b' : '#ffffff', stroke: byP ? '#6b3a00' : '#2a0a0a' });
+          if (e.combo >= 3) addText(`COMBO x${e.combo}`, e.x, e.y - 90, { size: 22, color: '#ffd1e8', stroke: '#5a1030', life: 1.1 });
+          G.crowd.excite = clamp(G.crowd.excite + (byP ? 0.2 : 0.08), 0, 1); if (byP) G.crowd.cheer = Math.max(G.crowd.cheer, e.counter ? 1 : 0.5);
+          AU.crowdBurst(byP ? 0.25 : 0.08);
+          if (!e.counter && Math.random() < 0.3 && G.t - G.lastSayAt > 2.5) say(pick(e.move === 'upper' ? (byP ? LINES.upperP : LINES.upperO) : (byP ? LINES.hitP : LINES.hitO)), e.by);
+          break;
+        }
+        case 'block': AU.punch(e.by === 'muslera' ? 'jab' : 'jab', true); addText(e.perfect ? '¡PARADA!' : 'BLOQUEO', e.x, FLOOR - 250, { size: 20, color: '#cfe8ff', stroke: '#10304a', life: 0.7 }); if (Math.random() < 0.2 && G.t - G.lastSayAt > 3) say(pick(e.who === 'oscar' ? LINES.blockO : LINES.blockP), e.who); break;
+        case 'parry': addText('¡OSCAR LEE EL GOLPE!', sim.o.x, FLOOR - 280, { size: 20, color: '#56cfcb', stroke: '#083a3a', life: 1 }); break;
+        case 'dodge': AU.dodge(); addText('ESQUIVA', e.who === 'muslera' ? sim.p.x : sim.o.x, FLOOR - 260, { size: 22, color: '#b8ffb8', stroke: '#0a3a0a', life: 0.8 }); if (e.who === 'muslera') { G.fx.slow = 0.25; } break;
+        case 'dodgeStart': break;
+        case 'knockdown': {
+          AU.knockdown(); shake(26); G.fx.flash = 1; G.fx.slow = 0.9;
+          addText(e.who === 'oscar' ? '¡¡AL SUELO!!' : '¡¡MUSLERA CAE!!', (sim.p.x + sim.o.x) / 2, FLOOR - 300, { size: 54, color: e.who === 'oscar' ? '#ffe36b' : '#ff8a8a', stroke: '#3a0a0a', life: 1.8, vy: -10 });
+          G.crowd.excite = 1; G.crowd.cheer = 1; AU.crowd(0.7, true);
+          burst(e.who === 'oscar' ? sim.o.x : sim.p.x, FLOOR - 200, 30, { color: '#fff', speed: 300 });
+          break;
+        }
+        case 'count': if (e.n > 0 && e.n <= 10) { AU.count(e.n); addText(String(e.n), e.who === 'muslera' ? sim.p.x : sim.o.x, FLOOR - 240, { size: 56, color: '#fff', stroke: '#000', life: 0.8, vy: -20 }); } break;
+        case 'mash': break;
+        case 'getUp': AU.getUp(); G.crowd.cheer = 0.6; AU.crowd(0.4); break;
+        case 'taunt': AU.taunt(); addText('¡OSCAR VACILA!', sim.o.x, FLOOR - 290, { size: 26, color: '#56cfcb', stroke: '#083a3a', life: 1.2 }); G.crowd.cheer = 0.5; break;
+        case 'comboEnd': break;
+        case 'say': if (G.t - G.lastSayAt > 0.8 || /CONTRA|SUELO|levanta|chulo|vacil|momento/i.test(e.text)) say(e.text, e.who); break;
+        case 'roundStart': break;
+        case 'break': showBreak(); setControls(false); break;
+        case 'over': endFight(e); break;
+      }
+    }
+  }
+
+  // ----------------------------------------------------------- bucle
+  function loop(now) {
+    requestAnimationFrame(loop);
+    const dtRaw = Math.min(0.05, (now - (G.last || now)) / 1000); G.last = now;
+    G.t += dtRaw;
+    if (!G.paused) update(dtRaw);
+    render();
+  }
+
+  function update(dt) {
+    const sim = G.sim;
+    // fx timers
+    if (G.fx.slow > 0) G.fx.slow -= dt;
+    const simDt = dt * (G.fx.slow > 0 ? 0.45 : 1);
+    for (const p of G.fx.parts) { p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += p.g * dt; }
+    G.fx.parts = G.fx.parts.filter(p => p.t < p.life);
+    for (const t of G.fx.texts) { t.t += dt; t.y += t.vy * dt; }
+    G.fx.texts = G.fx.texts.filter(t => t.t < t.life);
+    for (const r of G.fx.ring) r.t += dt; G.fx.ring = G.fx.ring.filter(r => r.t < 0.35);
+    G.fx.flash = Math.max(0, G.fx.flash - dt * 3);
+    G.cam.shake = Math.max(0, G.cam.shake - dt * 60);
+    G.crowd.cheer = Math.max(0, G.crowd.cheer - dt * 0.7);
+    G.crowd.excite = Math.max(0.15, G.crowd.excite - dt * 0.05);
+    G.ticker.t += dt; G.roundCard.t += dt;
+
+    switch (G.screen) {
+      case 'intro': updateIntro(dt); break;
+      case 'fight': {
+        G.acc += simDt; let n = 0;
+        const inp = readInput();
+        while (G.acc >= 1 / 60 && n < 4) { sim.update(1 / 60, inp); handleEvents(sim); inp.jab = inp.cross = inp.upper = inp.dodge = inp.mash = false; G.acc -= 1 / 60; n++; }
+        if (n === 0) { G.input.pressed.clear(); } // evitar perder pulsaciones: readInput ya las consumió
+        sweat(sim.p); sweat(sim.o);
+        if (sim.p.fresh > 0 && Math.random() < 0.3) G.fx.parts.push({ x: sim.p.x + (Math.random() - 0.5) * 24, y: FLOOR - 225, vx: (Math.random() - 0.5) * 40, vy: 40, t: 0, life: 0.5, r: 2, color: 'rgba(160,220,255,0.9)', g: 300, kind: 'drop' });
+        break;
+      }
+      case 'pool': updatePool(dt); break;
+      case 'corner': G.corner.t += dt; if (G.corner.t > 2.4) startNextRound(); break;
+      case 'over': { G.acc += dt; while (G.acc >= 1 / 60) { sim.update(1 / 60, {}); G.acc -= 1 / 60; } break; }
+    }
+    // cámara
+    updateCamera(dt);
+  }
+
+  function updateIntro(dt) {
+    const sim = G.sim, I = G.intro; I.t += dt;
+    const o = sim.o, p = sim.p;
+    // Oscar entra por la derecha con medallas (0-3s), Muslera por la izquierda con toalla (3-6s), presentación (6-8s)
+    if (I.t < 3.2) { o.x = clamp(lerp(1000, 640, (I.t - 0.4) / 2.4), 640, 1000); o.state = 'walk'; o.walkDir = -1; o.dir = -1; o.t = I.t; o.face = 'normal'; p.x = 60; p.state = 'walk'; p.t = I.t; p.walkDir = 1; }
+    else if (I.t < 6.2) { o.state = 'idle'; o.t = I.t; p.x = clamp(lerp(60, 330, (I.t - 3.4) / 2.4), 60, 330); p.state = 'walk'; p.walkDir = 1; p.t = I.t; p.dir = 1; if (I.t > 5.9) { p.state = 'idle'; } }
+    else { o.state = 'idle'; p.state = 'idle'; o.t = I.t; p.t = I.t; }
+    if (I.step === 0 && I.t > 0.6) { I.step = 1; G.crowd.cheer = 0.8; say('¡Entra OSCAR! Con medallas. Medallas de verdad. Esto empieza mal para Muslera.', 'oscar'); AU.crowdBurst(0.5); }
+    if (I.step === 1 && I.t > 3.5) { I.step = 2; G.crowd.cheer = 0.5; say('Y aquí llega MUSLERA, con su toalla, sus guantes rosas y la guardia por los suelos.', 'muslera'); }
+    if (I.step === 2 && I.t > 6.4) { I.step = 3; say('Tres asaltos de un minuto. Que gane el mejor. O sea, Oscar. Salvo que...', ''); }
+    if (I.t > 8.6) { p.x = 360; o.x = 600; p.walkDir = 0; o.walkDir = 0; beginRound1(); }
+  }
+
+  function updatePool(dt) {
+    const P = G.pool; P.t += dt;
+    const ph = P.t / 6.5;
+    if (!P.splashed && ph > 0.42) { P.splashed = true; AU.splash(); AU.bubbles(1.6); }
+    if (!P.shook && ph > 0.78) { P.shook = true; AU.splash(); say('¡FRESQUITO! Muslera vuelve con la cabeza mojada y las ideas... igual de poco claras.', 'muslera'); }
+    if (ph >= 1) { startNextRound(); }
+  }
+
+  function updateCamera(dt) {
+    const sim = G.sim; const cam = G.cam;
+    let cx = W / 2, vw = W;
+    if (sim && ['fight', 'intro', 'over', 'corner'].includes(G.screen)) {
+      const mid = (sim.p.x + sim.o.x) / 2, sep = Math.abs(sim.p.x - sim.o.x);
+      const aspect = G.cw / G.ch;
+      // cuanto más estrecha la pantalla, más cerca la cámara
+      vw = aspect >= 1.6 ? W : clamp(sep + (aspect < 1 ? 250 : 330), Math.min(W, Math.max(aspect < 1 ? 400 : 520, aspect * 540)), W);
+      cx = clamp(mid, vw / 2, W - vw / 2);
+      if (G.screen === 'over' && G.results) { vw = Math.min(vw, 620); const w = G.results.winner === 'player' ? sim.p : sim.o; cx = clamp(w.x, vw / 2, W - vw / 2); }
+    }
+    const k = 1 - Math.pow(0.001, dt);
+    cam.vw = lerp(cam.vw || W, vw, k * 0.6); cam.x = lerp(cam.x || cx, cx, k);
+  }
+
+  // ----------------------------------------------------------- render
+  function render() {
+    const ctx = G.ctx, cw = G.cw, ch = G.ch;
+    ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    const sim = G.sim;
+    if (G.screen === 'pool' && sim) { renderPool(ctx); return; }
+    // --- mundo
+    let scale = cw / G.cam.vw;
+    if (ch / scale < 345) scale = ch / 345;             // pantallas muy bajas: alejar para que quepan las cabezas
+    const vh = ch / scale;
+    const vwReal = cw / scale;
+    const camX = clamp(G.cam.x - vwReal / 2, Math.min(0, (W - vwReal) / 2), Math.max(0, W - vwReal));
+    const camY = FLOOR + 95 - vh;                 // el suelo queda a ~95px lógicos del borde inferior
+    const sh = G.cam.shake; const sx = (Math.random() - 0.5) * sh, sy = (Math.random() - 0.5) * sh;
+    ctx.save();
+    ctx.scale(scale, scale); ctx.translate(-camX + sx, -camY + sy);
+    // relleno fuera del fondo (cielo arriba, césped abajo)
+    ctx.fillStyle = '#070a14'; ctx.fillRect(camX - 50, camY - 600, vwReal + 100, 600 - camY + 10);
+    ctx.fillStyle = '#0f2a12'; ctx.fillRect(camX - 50, 60, 50 - camX, 360);
+    ctx.fillStyle = '#8c7a5a'; ctx.fillRect(W, 90, vwReal, 330);
+    ctx.fillStyle = '#1f6a22'; ctx.fillRect(camX - 50, 415, vwReal + 100, 700);
+    ctx.drawImage(D.background(), 0, 0);
+    const cheer = G.crowd.cheer; D.drawSpectators(ctx, G.t, G.crowd.excite, cheer);
+    if (sim) {
+      const intro = G.screen === 'intro';
+      const order = sim.p.x < sim.o.x ? [sim.p, sim.o] : [sim.o, sim.p];
+      // el que está "más cerca de cámara" (más a la izquierda... en realidad el que ataca) va delante
+      const front = sim.p.move ? sim.p : sim.o.move ? sim.o : (sim.p.state === 'down' ? sim.o : sim.p);
+      const back = front === sim.p ? sim.o : sim.p;
+      D.drawFighter(ctx, back, G.t, { medals: intro && back.key === 'oscar', towel: intro && back.key === 'muslera', wet: back.fresh > 0, entrance: intro && back.state === 'walk' });
+      D.drawFighter(ctx, front, G.t, { medals: intro && front.key === 'oscar', towel: intro && front.key === 'muslera', wet: front.fresh > 0, entrance: intro && front.state === 'walk' });
+      void order;
+    }
+    D.drawForeground(ctx);
+    // partículas y anillos
+    for (const r of G.fx.ring) { const k = r.t / 0.35; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = (r.big ? 6 : 3) * (1 - k); ctx.beginPath(); ctx.arc(r.x, r.y, (r.big ? 90 : 50) * k + 10, 0, Math.PI * 2); ctx.stroke(); }
+    for (const p of G.fx.parts) { const a = 1 - p.t / p.life; ctx.globalAlpha = a; ctx.fillStyle = p.color; if (p.kind === 'drop') { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.7, p.r * 1.3, 0, 0, Math.PI * 2); ctx.fill(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); } }
+    ctx.globalAlpha = 1;
+    for (const t of G.fx.texts) {
+      const k = t.t / t.life; const pop = t.t < 0.12 ? 0.6 + t.t / 0.12 * 0.5 : 1.1 - Math.min(0.1, (t.t - 0.12));
+      ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.rot); ctx.scale(pop, pop); ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      ctx.font = `${t.size}px "Anton", Impact, "Arial Black", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = Math.max(3, t.size / 7); ctx.strokeStyle = t.stroke; ctx.lineJoin = 'round'; ctx.strokeText(t.text, 0, 0); ctx.fillStyle = t.color; ctx.fillText(t.text, 0, 0);
+      ctx.restore();
+    }
+    ctx.restore();
+    if (G.fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.fx.flash * 0.6})`; ctx.fillRect(0, 0, cw, ch); }
+    // viñeta
+    const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.4, cw / 2, ch / 2, Math.max(cw, ch) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+    // --- HUD
+    if (sim && ['fight', 'over', 'corner', 'intro'].includes(G.screen)) renderHUD(ctx);
+    if (G.screen === 'title') renderTitleBg(ctx);
+  }
+
+  function renderTitleBg(ctx) { /* el fondo del mundo ya se ve detrás del menú */ }
+
+  function renderHUD(ctx) {
+    const sim = G.sim, cw = G.cw, ch = G.ch;
+    const u = clamp(Math.min(cw / 960, ch / 540), 0.5, 1.4);       // unidad de escala del HUD
+    const pad = 10 * u, barW = Math.min(cw * 0.5 - 60 * u - 16 * u, 380 * u), barH = 18 * u, top = pad + 6 * u;
+    const font = (sz, fam) => `${sz * u}px ${fam || '"Barlow Condensed", "Arial Narrow", sans-serif'}`;
+    const drawBar = (x, y, w, h, frac, color, right, lowColor) => {
+      ctx.fillStyle = 'rgba(0,0,0,0.55)'; D.rr(ctx, x - 2, y - 2, w + 4, h + 4, 4 * u); ctx.fill();
+      ctx.fillStyle = '#2a1414'; ctx.fillRect(x, y, w, h);
+      const fw = w * clamp(frac, 0, 1);
+      ctx.fillStyle = frac < 0.3 && lowColor ? lowColor : color; ctx.fillRect(right ? x + w - fw : x, y, fw, h);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(x, y, w, h * 0.35);
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1; for (let i = 1; i < 10; i++) { ctx.beginPath(); ctx.moveTo(x + w * i / 10, y); ctx.lineTo(x + w * i / 10, y + h); ctx.stroke(); }
+    };
+    if (G.screen !== 'intro') {
+      // Muslera (izquierda)
+      drawBar(pad + 54 * u, top, barW, barH, sim.p.hp / sim.p.maxHp, '#e8463c', false, '#ff2a2a');
+      drawBar(pad + 54 * u, top + barH + 5 * u, barW * 0.7, 7 * u, sim.p.stamina / sim.p.maxStamina, sim.p.fresh > 0 ? '#7fe0ff' : '#f2c230');
+      drawBar(cw - pad - 54 * u - barW, top, barW, barH, sim.o.hp / sim.o.maxHp, '#e8463c', true, '#ff2a2a');
+      drawBar(cw - pad - 54 * u - barW * 0.7, top + barH + 5 * u, barW * 0.7, 7 * u, sim.o.stamina / sim.o.maxStamina, '#f2c230', true);
+      // retratos
+      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.5)'; D.rr(ctx, pad, top - 6 * u, 48 * u, 48 * u, 8 * u); ctx.fill(); ctx.beginPath(); D.rr(ctx, pad, top - 6 * u, 48 * u, 48 * u, 8 * u); ctx.clip(); ctx.translate(pad + 24 * u, top + 20 * u); ctx.scale(u, u); D.drawPortrait(ctx, 'muslera', 0, 0, 56, sim.p.face === 'hit' ? 'hit' : sim.p.hp < 30 ? 'tired' : 'normal', { wet: sim.p.fresh > 0 }); ctx.restore();
+      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.5)'; D.rr(ctx, cw - pad - 48 * u, top - 6 * u, 48 * u, 48 * u, 8 * u); ctx.fill(); ctx.beginPath(); D.rr(ctx, cw - pad - 48 * u, top - 6 * u, 48 * u, 48 * u, 8 * u); ctx.clip(); ctx.translate(cw - pad - 24 * u, top + 20 * u); ctx.scale(-u, u); D.drawPortrait(ctx, 'oscar', 0, 0, 54, sim.o.face === 'hit' ? 'hit' : sim.o.hp < 30 ? 'tired' : 'angry'); ctx.restore();
+      // nombres
+      ctx.font = font(20, '"Anton", Impact, sans-serif'); ctx.textBaseline = 'top'; ctx.lineWidth = 3 * u; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.fillStyle = '#fff';
+      ctx.textAlign = 'left'; ctx.strokeText('MUSLERA', pad + 56 * u, top + barH + 14 * u); ctx.fillText('MUSLERA', pad + 56 * u, top + barH + 14 * u);
+      ctx.textAlign = 'right'; ctx.strokeText('OSCAR', cw - pad - 56 * u, top + barH + 14 * u); ctx.fillText('OSCAR', cw - pad - 56 * u, top + barH + 14 * u);
+      ctx.font = font(12); ctx.fillStyle = '#ffd7d7'; ctx.textAlign = 'left'; ctx.fillText('EL PUEBLO · guardia baja', pad + 56 * u, top + barH + 36 * u); ctx.textAlign = 'right'; ctx.fillText('EL CAMPEÓN · guardia alta', cw - pad - 56 * u, top + barH + 36 * u);
+      // caídas (puntos)
+      for (let i = 0; i < 3; i++) { ctx.fillStyle = i < sim.p.knockdowns ? '#ff5a5a' : 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(pad + 56 * u + barW - 10 * u - i * 14 * u, top + barH + 24 * u, 4 * u, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = i < sim.o.knockdowns ? '#ff5a5a' : 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(cw - pad - 56 * u - barW + 10 * u + i * 14 * u, top + barH + 24 * u, 4 * u, 0, Math.PI * 2); ctx.fill(); }
+      // reloj central
+      const tm = Math.max(0, Math.ceil(sim.roundT)); const mm = Math.floor(tm / 60), ss = tm % 60;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; D.rr(ctx, cw / 2 - 48 * u, top - 4 * u, 96 * u, 50 * u, 8 * u); ctx.fill();
+      ctx.font = font(30, '"Anton", Impact, sans-serif'); ctx.textAlign = 'center'; ctx.fillStyle = sim.roundT < 10 ? '#ff6b6b' : '#fff'; ctx.fillText(`${mm}:${String(ss).padStart(2, '0')}`, cw / 2, top);
+      ctx.font = font(12); ctx.fillStyle = '#ffd7a0'; ctx.fillText(`ASALTO ${sim.round} / 3`, cw / 2, top + 32 * u);
+      // buff piscina
+      if (sim.p.fresh > 0) { ctx.font = font(13); ctx.fillStyle = '#9fe9ff'; ctx.textAlign = 'left'; ctx.fillText(`FRESQUITO ${Math.ceil(sim.p.fresh)}s`, pad + 56 * u + barW * 0.7 + 8 * u, top + barH + 3 * u); }
+      // cuenta de protección
+      if (sim.phase === 'count') {
+        const down = sim.p.state === 'down' ? sim.p : sim.o;
+        ctx.textAlign = 'center';
+        if (down === sim.p) {
+          ctx.font = font(26, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 4 * u; ctx.strokeText('¡LEVÁNTATE! MACHACA LOS BOTONES', cw / 2, ch * 0.3); ctx.fillText('¡LEVÁNTATE! MACHACA LOS BOTONES', cw / 2, ch * 0.3);
+          const bw = Math.min(cw * 0.5, 360 * u); drawBar(cw / 2 - bw / 2, ch * 0.3 + 40 * u, bw, 16 * u, down.rise.got / Math.max(1, down.rise.need), '#7fe0ff');
+          if (down.count < 3) { ctx.font = font(14); ctx.fillStyle = '#ffd7a0'; ctx.fillText('(tienes que esperar al 3 para levantarte)', cw / 2, ch * 0.3 + 62 * u); }
+        } else {
+          ctx.font = font(26, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#ffe36b'; ctx.strokeStyle = '#000'; ctx.lineWidth = 4 * u; ctx.strokeText('¡¡OSCAR EN EL SUELO!!', cw / 2, ch * 0.3); ctx.fillText('¡¡OSCAR EN EL SUELO!!', cw / 2, ch * 0.3);
+        }
+      }
+      if (sim.phase === 'ready' && G.screen === 'fight') {
+        ctx.textAlign = 'center'; ctx.font = font(22, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#fff'; ctx.strokeStyle = '#000'; ctx.lineWidth = 4 * u; const txt = sim.phaseT > 1.1 ? '¡BOXEAD!' : 'PREPARADOS...'; ctx.strokeText(txt, cw / 2, ch * 0.6); ctx.fillText(txt, cw / 2, ch * 0.6);
+      }
+    }
+    // tarjeta de asalto
+    if (G.roundCard.t < 2.2 && G.roundCard.text) {
+      const k = G.roundCard.t; const a = k < 0.3 ? k / 0.3 : k > 1.7 ? (2.2 - k) / 0.5 : 1;
+      ctx.save(); ctx.globalAlpha = a; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = font(64, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = '#ffe36b';
+      ctx.strokeText(G.roundCard.text, cw / 2, ch * 0.42); ctx.fillText(G.roundCard.text, cw / 2, ch * 0.42);
+      ctx.restore();
+    }
+    // presentación en la intro
+    if (G.screen === 'intro') {
+      const I = G.intro; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const card = (name, alias, record, k, x) => {
+        const a = clamp(k, 0, 1); ctx.save(); ctx.globalAlpha = a; ctx.translate(x, ch * 0.22);
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; D.rr(ctx, -150 * u, -36 * u, 300 * u, 92 * u, 10 * u); ctx.fill();
+        ctx.font = font(44, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#fff'; ctx.fillText(name, 0, -8 * u);
+        ctx.font = font(18); ctx.fillStyle = '#ffd7a0'; ctx.fillText(alias, 0, 24 * u); ctx.font = font(13); ctx.fillStyle = '#ccc'; ctx.fillText(record, 0, 42 * u);
+        ctx.restore();
+      };
+      if (I.t > 0.8 && I.t < 3.6) card('OSCAR', '"EL CAMPEÓN" · hace boxeo de verdad', 'Récord: todas ganadas · Medallas: 3 · Guardia: impecable', (I.t - 0.8) * 2, cw * 0.68);
+      if (I.t > 3.8 && I.t < 6.6) card('MUSLERA', '"EL PUEBLO" · no hace boxeo', `Récord: ${save.wins}-${save.losses} · Guardia: ¿qué guardia?`, (I.t - 3.8) * 2, cw * 0.32);
+      if (I.t > 6.6) { ctx.save(); ctx.globalAlpha = clamp((I.t - 6.6) * 2, 0, 1); ctx.font = font(96, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = '#ffe36b'; ctx.strokeText('VS', cw / 2, ch * 0.38); ctx.fillText('VS', cw / 2, ch * 0.38); ctx.restore(); }
+      ctx.font = font(13); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('toca para saltar', cw - pad, ch - pad - 30 * u);
+    }
+    // ticker de comentarios
+    if (G.ticker.text && G.ticker.t < 5.5) {
+      const a = G.ticker.t < 0.2 ? G.ticker.t / 0.2 : G.ticker.t > 4.8 ? (5.5 - G.ticker.t) / 0.7 : 1;
+      ctx.save(); ctx.globalAlpha = a; ctx.font = font(16); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const maxW = cw - 2 * pad - 20 * u; let txt = G.ticker.text;
+      while (ctx.measureText(txt).width > maxW && txt.length > 10) txt = txt.slice(0, -4) + '…';
+      const inset = document.body.classList.contains('playing') && !document.body.classList.contains('portrait') ? 150 : 0;
+      const tw = ctx.measureText(txt).width + 24 * u, th = 30 * u, ty = ch - pad - th - inset;
+      ctx.fillStyle = G.ticker.who === 'oscar' ? 'rgba(10,60,60,0.8)' : G.ticker.who === 'muslera' ? 'rgba(90,20,60,0.8)' : 'rgba(0,0,0,0.7)'; D.rr(ctx, pad, ty, tw, th, 6 * u); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.fillText(txt, pad + 12 * u, ty + th / 2);
+      ctx.restore();
+    }
+    // resultado antes de la pantalla de estadísticas
+    if (G.screen === 'over' && G.results) {
+      const won = G.results.winner === 'player'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = font(60, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = won ? '#ffe36b' : '#ff8a8a';
+      const txt = won ? '¡GANA MUSLERA!' : (G.results.method === 'decision' ? 'GANA OSCAR' : 'K.O.');
+      ctx.strokeText(txt, cw / 2, ch * 0.36); ctx.fillText(txt, cw / 2, ch * 0.36);
+    }
+  }
+
+  function renderPool(ctx) {
+    const cw = G.cw, ch = G.ch;
+    // encajar 960x540 con "cover"
+    const scale = Math.max(cw / W, ch / H); const ox = (cw - W * scale) / 2, oy = (ch - H * scale) / 2;
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
+    D.drawPoolScene(ctx, G.t, G.sim.p, G.pool.t / 6.5);
+    ctx.restore();
+    const u = clamp(Math.min(cw / 960, ch / 540), 0.45, 1.4);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = `${44 * u}px "Anton", Impact, sans-serif`; ctx.lineWidth = 6 * u; ctx.strokeStyle = '#06253a'; ctx.fillStyle = '#bff0ff';
+    const ph = G.pool.t / 6.5; const txt = ph < 0.4 ? 'ENTRE ASALTOS: LA PISCINA' : ph < 0.7 ? 'GLU GLU GLU' : '¡FRESQUITO!';
+    ctx.strokeText(txt, cw / 2, 18 * u); ctx.fillText(txt, cw / 2, 18 * u);
+    if (G.ticker.text && G.ticker.t < 5.5) { ctx.font = `${16 * u}px "Barlow Condensed", sans-serif`; ctx.textBaseline = 'bottom'; ctx.fillStyle = '#fff'; ctx.fillText(G.ticker.text, cw / 2, ch - 16 * u); }
+  }
+
+  document.addEventListener('DOMContentLoaded', boot);
+  root.TSM_GAME = G;
+})(window);
+
+</script>

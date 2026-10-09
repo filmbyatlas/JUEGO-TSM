@@ -1,0 +1,254 @@
+<title>TSM · Todos Somos Muslera</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;700&display=swap">
+<style>
+/* Layout: un escenario a pantalla completa (canvas) con menús superpuestos y una botonera táctil abajo. */
+:root {
+  --bg: #0b0e18;
+  --panel: rgba(12, 10, 20, 0.88);
+  --panel-2: rgba(28, 22, 36, 0.92);
+  --fg: #f5efe6;
+  --muted: #b9b0a4;
+  --pink: #ec93c0;      /* guantes de Muslera */
+  --cyan: #56cfcb;      /* guantes de Oscar */
+  --gold: #f2d33b;
+  --red: #e8463c;
+  --line: rgba(255, 255, 255, 0.12);
+  --display: "Anton", Impact, "Arial Black", sans-serif;
+  --body: "Barlow Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 18px; line-height: 1.3; overflow: hidden; -webkit-text-size-adjust: 100%; }
+* { box-sizing: border-box; }
+#stage { height: 100%; display: flex; flex-direction: column; position: relative; }
+body.touch.portrait.playing #arena { flex: 0 0 auto; height: min(78vw, 58vh); }
+body.touch.portrait.playing #controls { flex: 1 1 auto; align-items: center; padding-top: 18px; }
+body.touch.portrait.playing .ctl { width: 68px; height: 68px; } body.touch.portrait.playing .ctl.move { width: 64px; height: 84px; } body.touch.portrait.playing .ctl-def .ctl { width: 78px; height: 56px; }
+body.touch #topbar { top: auto; bottom: 8px; }
+body.touch:not(.playing) #btn-pause { display: none; }
+/* táctil en horizontal: la botonera flota sobre el escenario para no robar altura */
+body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.45)); border-top: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
+body.touch.playing:not(.portrait) #controls .ctl { pointer-events: auto; opacity: 0.82; }
+body.touch.playing:not(.portrait) #topbar { bottom: auto; top: 50%; right: 6px; flex-direction: column; }
+/* táctil en vertical: dos filas de botones a la derecha */
+body.touch.portrait.playing .ctl-group.right { flex-wrap: wrap; justify-content: flex-end; width: 222px; row-gap: 8px; }
+body.touch.portrait.playing .ctl-def { flex-direction: row; width: 100%; justify-content: flex-end; }
+body.touch.portrait.playing .ctl-def .ctl { width: 100px; }
+body.touch.portrait.playing .ctl.move { width: 56px; height: 120px; }
+body.touch.portrait.playing .ctl-group.right .ctl:not(.dodge):not(.block) { width: 66px; height: 66px; }
+#arena { position: relative; flex: 1 1 auto; min-height: 0; background: #070a14; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+#game { display: block; position: absolute; inset: 0; }
+#topbar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
+#topbar button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,0.55); color: var(--fg); font-size: 18px; cursor: pointer; }
+#topbar button:focus-visible, .btn:focus-visible, .ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+body:not(.touch) #btn-pause { display: none; }
+
+/* botonera táctil */
+#controls { display: none; flex: 0 0 auto; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, #14101c, #0b0810); border-top: 1px solid var(--line); }
+#controls.active { display: flex; }
+body:not(.touch) #controls { display: none !important; }
+#controls { justify-content: space-between; align-items: flex-end; gap: 10px; }
+.ctl-group { display: flex; gap: 8px; align-items: flex-end; }
+.ctl { border: 0; border-radius: 14px; font-family: var(--display); font-size: 17px; letter-spacing: 0.04em; color: #fff; background: #2a2433; box-shadow: 0 4px 0 #15111b, inset 0 1px 0 rgba(255,255,255,0.12); width: 64px; height: 64px; touch-action: none; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; }
+.ctl small { font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; letter-spacing: 0.05em; }
+.ctl.on { transform: translateY(3px); box-shadow: 0 1px 0 #15111b; filter: brightness(1.25); }
+.ctl.move { width: 60px; height: 70px; font-size: 26px; }
+.ctl.jab { background: #b84e86; } .ctl.cross { background: #d2537f; } .ctl.upper { background: #e8468a; box-shadow: 0 4px 0 #7a1f45, inset 0 1px 0 rgba(255,255,255,0.15); }
+.ctl.dodge { background: #2f8a7f; } .ctl.block { background: #3a5a9a; }
+.ctl-def { display: flex; flex-direction: column; gap: 8px; }
+.ctl-def .ctl { height: 50px; width: 72px; font-size: 14px; }
+@media (max-width: 420px) { .ctl { width: 56px; height: 56px; font-size: 15px; } .ctl.move { width: 50px; height: 64px; } .ctl-def .ctl { width: 62px; height: 46px; } .ctl-group { gap: 6px; } }
+@media (max-width: 380px) { body.touch.portrait.playing .ctl { width: 58px; height: 62px; } body.touch.portrait.playing .ctl.move { width: 54px; height: 76px; } body.touch.portrait.playing .ctl-def .ctl { width: 66px; height: 50px; } }
+
+/* menús superpuestos */
+.overlay { position: absolute; inset: 0; z-index: 4; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: radial-gradient(ellipse at 50% 40%, rgba(10,8,16,0.55), rgba(5,4,10,0.9)); }
+.overlay[hidden] { display: none; }
+.panel { width: min(100%, 560px); background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px 22px 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); text-align: center; }
+.panel.wide { width: min(100%, 680px); }
+.eyebrow { font-size: 14px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+h1 { font-family: var(--display); font-size: clamp(64px, 16vw, 120px); line-height: 0.9; margin: 4px 0 0; letter-spacing: 0.02em; color: #fff; text-shadow: 0 6px 0 #5a1e3f, 0 10px 30px rgba(236,147,192,0.35); text-wrap: balance; }
+h1 span { color: var(--pink); }
+h2 { font-family: var(--display); font-size: clamp(30px, 7vw, 44px); margin: 0 0 6px; letter-spacing: 0.03em; text-wrap: balance; }
+.sub { font-size: clamp(20px, 4.6vw, 28px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gold); margin: 2px 0 10px; }
+.portraits { display: block; width: min(100%, 320px); height: auto; margin: 4px auto 2px; }
+.record { display: grid; gap: 2px; margin: 6px 0 12px; font-size: 18px; color: var(--muted); }
+.record b { color: var(--fg); font-size: 22px; }
+#title-beltcv { width: 220px; height: 60px; display: block; margin: 2px auto 0; }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 10px; }
+.btn { font-family: var(--display); font-size: 22px; letter-spacing: 0.06em; padding: 12px 22px; border-radius: 12px; border: 0; cursor: pointer; background: #2b2535; color: #fff; box-shadow: 0 4px 0 #15111b; min-width: 150px; }
+.btn.primary { background: linear-gradient(180deg, var(--pink), #c85a94); color: #2a0a1c; box-shadow: 0 4px 0 #6d2a4c; font-size: 28px; padding: 14px 30px; }
+.btn.pool { background: linear-gradient(180deg, #5fd0ff, #2a8fcf); color: #062034; box-shadow: 0 4px 0 #14456b; }
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #15111b; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+.btn small { display: block; font-family: var(--body); font-size: 14px; letter-spacing: 0.02em; font-weight: 700; margin-top: 3px; opacity: 0.85; }
+.btn-back { min-width: 120px; }
+.howto { text-align: left; display: grid; gap: 12px; margin-top: 8px; }
+.howto h3 { margin: 0 0 4px; font-family: var(--display); font-size: 20px; letter-spacing: 0.05em; color: var(--gold); }
+.howto ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.howto li { min-width: 0; }
+kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 0 6px; font-size: 15px; }
+.tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 14px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.tag.pink { background: var(--pink); color: #2a0a1c; } .tag.cyan { background: var(--cyan); color: #04302e; }
+.belts { display: grid; gap: 10px; margin-top: 10px; text-align: left; }
+.belt-row { display: flex; gap: 14px; align-items: center; padding: 8px 10px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+.belt-row.unlocked { border-color: rgba(242,211,59,0.45); background: rgba(242,211,59,0.06); }
+.belt-row canvas { flex: 0 0 auto; }
+.belt-info { display: grid; min-width: 0; }
+.belt-info strong { font-family: var(--display); font-size: 18px; letter-spacing: 0.04em; font-weight: 400; }
+.belt-info span { color: var(--muted); font-size: 16px; }
+.belt-info em { color: var(--gold); font-style: normal; font-size: 15px; }
+@media (max-width: 420px) { .belt-row { flex-direction: column; align-items: flex-start; } }
+.scores { display: flex; justify-content: center; gap: 24px; margin: 8px 0 4px; }
+.sc { display: grid; justify-items: center; }
+.sc span { font-size: 16px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.sc b { font-family: var(--display); font-size: 48px; line-height: 1; font-weight: 400; }
+.sc small { color: var(--muted); font-size: 14px; }
+.judges { color: var(--gold); font-weight: 700; margin: 4px 0; }
+.state { color: var(--muted); margin-bottom: 10px; }
+.stats { width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 17px; font-variant-numeric: tabular-nums; }
+.stats th { font-family: var(--display); font-weight: 400; letter-spacing: 0.05em; color: var(--muted); padding: 4px; }
+.stats td { padding: 4px 6px; border-top: 1px solid var(--line); text-align: center; }
+.stats td:first-child { text-align: left; color: var(--muted); }
+#res-title.win { color: var(--gold); text-shadow: 0 4px 0 #5a4a00; } #res-title.lose { color: #ff8a8a; text-shadow: 0 4px 0 #4a0a0a; }
+#res-belt { margin: 8px 0; padding: 10px; border-radius: 12px; background: rgba(242,211,59,0.08); border: 1px solid rgba(242,211,59,0.4); }
+#res-beltcv { width: 260px; height: 70px; display: block; margin: 0 auto 6px; max-width: 100%; }
+.quote { color: var(--muted); font-style: italic; margin: 6px 0 2px; }
+.progress { margin: 4px 0 8px; }
+.foot { margin-top: 12px; font-size: 14px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
+@media (prefers-reduced-motion: reduce) { .btn:active, .ctl.on { transform: none; } }
+</style>
+
+<div id="stage">
+  <div id="arena">
+    <canvas id="game" aria-label="Combate de boxeo entre Muslera y Oscar"></canvas>
+    <div id="topbar">
+      <button id="btn-pause" type="button" aria-label="Pausa">⏸</button>
+      <button id="btn-mute" type="button" aria-label="Silenciar">🔊</button>
+    </div>
+  </div>
+
+    <section class="overlay" id="ov-title">
+      <div class="panel">
+        <div class="eyebrow">KLK presenta</div>
+        <h1>T<span>S</span>M</h1>
+        <div class="sub">Todos Somos Muslera</div>
+        <canvas id="title-portraits" class="portraits" width="640" height="300"></canvas>
+        <div class="record">
+          <b id="title-record">0 victorias · 0 derrotas</b>
+          <canvas id="title-beltcv" width="440" height="120"></canvas>
+          <span id="title-belt">Sin cinturón</span>
+          <span id="title-next"></span>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="btn-fight" type="button">PELEAR</button>
+          <button class="btn" id="btn-howto" type="button">CÓMO SE JUEGA</button>
+          <button class="btn" id="btn-belts" type="button">CINTURONES</button>
+        </div>
+        <div class="foot">Tú eres Muslera. Oscar hace boxeo. Tú no. Suerte.</div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-howto" hidden>
+      <div class="panel wide">
+        <h2>CÓMO SE JUEGA</h2>
+        <div class="howto">
+          <div>
+            <h3>La pelea</h3>
+            <ul>
+              <li>Tres asaltos de un minuto. Gana quien tumbe tres veces al otro, o los jueces deciden al final. Los jueces son amigos de Oscar.</li>
+              <li><span class="tag pink">Muslera</span> va siempre con la guardia baja: su bloqueo tarda en subir y es flojo. A cambio, con las manos tan abajo, el <b>uppercut le sale rapidísimo</b> y pega como un camión.</li>
+              <li><span class="tag cyan">Oscar</span> va bien plantado, bloquea casi todo, lee los golpes repetidos y castiga cuando te ve vendido.</li>
+              <li>Si te tumban, <b>machaca los botones</b> para levantarte antes del 10. Cada caída cuesta más levantarse.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Cómo se le gana (una de cada veinte, con suerte)</h3>
+            <ul>
+              <li><b>Esquiva</b> justo cuando Oscar lanza: se queda vendido un segundo. Métele el uppercut ahí. Eso es una <b>CONTRA</b> y duele el doble.</li>
+              <li>De vez en cuando Oscar <b>se pone chulo</b> y baja los brazos para mirar al público. Es tu momento.</li>
+              <li>No repitas el mismo golpe tres veces: Oscar lo lee. Y no te quedes sin aguante: pegarás a cámara lenta.</li>
+              <li>Entre asaltos puedes <b>meter la cabeza en la piscina</b> una sola vez por pelea: recuperas vida, aguante al máximo y 20 segundos de fresquito.</li>
+            </ul>
+          </div>
+          <div>
+            <h3>Controles</h3>
+            <ul>
+              <li>Teclado: <kbd>←</kbd> <kbd>→</kbd> o <kbd>A</kbd> <kbd>D</kbd> moverse · <kbd>J</kbd> jab · <kbd>K</kbd> cruzado · <kbd>L</kbd> uppercut · <kbd>Espacio</kbd> esquivar · <kbd>S</kbd> o <kbd>Shift</kbd> guardia · <kbd>Esc</kbd> pausa.</li>
+              <li>Móvil: botones en pantalla. Mejor en horizontal. Mantén pulsada la guardia.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="actions"><button class="btn btn-back primary" type="button">VOLVER</button></div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-belts" hidden>
+      <div class="panel wide">
+        <h2>CINTURONES</h2>
+        <div class="state" id="belts-summary"></div>
+        <div class="belts" id="belts-list"></div>
+        <div class="actions"><button class="btn btn-back primary" type="button">VOLVER</button><button class="btn" id="btn-reset" type="button">Borrar progreso</button></div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-break" hidden>
+      <div class="panel">
+        <h2 id="break-title">FIN DEL ASALTO 1</h2>
+        <div class="scores" id="break-score"></div>
+        <div class="judges" id="break-judges"></div>
+        <div class="state" id="break-state"></div>
+        <div class="actions">
+          <button class="btn pool" id="btn-pool" type="button">METER LA CABEZA EN LA PISCINA<small>+30 vida · aguante al máximo · 20 s fresquito</small></button>
+          <button class="btn" id="btn-rest" type="button">DESCANSAR EN LA ESQUINA<small>+10 vida · +40 aguante</small></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-over" hidden>
+      <div class="panel wide">
+        <h2 id="res-title">OSCAR GANA</h2>
+        <div class="state" id="res-sub"></div>
+        <div id="res-belt" hidden>
+          <canvas id="res-beltcv" width="520" height="140"></canvas>
+          <div class="sub" id="res-beltname"></div>
+          <div id="res-belttext"></div>
+        </div>
+        <table class="stats" id="res-stats"></table>
+        <div class="progress" id="res-progress"></div>
+        <div class="quote" id="res-quote"></div>
+        <div class="actions">
+          <button class="btn primary" id="btn-again" type="button">REVANCHA</button>
+          <button class="btn" id="btn-menu" type="button">MENÚ</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-pause" hidden>
+      <div class="panel">
+        <h2>PAUSA</h2>
+        <div class="state">Oscar está esperando. No le gusta esperar.</div>
+        <div class="actions"><button class="btn primary" id="btn-resume" type="button">SEGUIR</button><button class="btn" id="btn-quit" type="button">ABANDONAR</button></div>
+      </div>
+    </section>
+
+  <div id="controls">
+    <div class="ctl-group">
+      <button class="ctl move" data-a="left" type="button" aria-label="Izquierda">◀</button>
+      <button class="ctl move" data-a="right" type="button" aria-label="Derecha">▶</button>
+    </div>
+    <div class="ctl-group right">
+      <div class="ctl-def">
+        <button class="ctl dodge" data-a="dodge" type="button">ESQUIVA</button>
+        <button class="ctl block" data-a="block" type="button">GUARDIA</button>
+      </div>
+      <button class="ctl jab" data-a="jab" type="button">JAB</button>
+      <button class="ctl cross" data-a="cross" type="button">CRUZ<small>cruzado</small></button>
+      <button class="ctl upper" data-a="upper" type="button">UPPER</button>
+    </div>
+  </div>
+</div>
+
+<script>/*SIM*/</script>
+<script>/*AUDIO*/</script>
+<script>/*DRAW*/</script>
+<script>/*GAME*/</script>
