@@ -343,7 +343,7 @@
   function startFight() {
     if (!hasProfile()) { showWho(); return; }
     G.sim = new S.Sim({ difficulty: difficulty() });
-    G.sim.p.x = 3.6; G.sim.p.z = 3.75; G.sim.o.x = 8.75; G.sim.o.z = -0.8; G.sim.face();
+    G.sim.p.x = 3.6; G.sim.p.z = 4.9; G.sim.o.x = 11.4; G.sim.o.z = -0.8; G.sim.face();
     G.screen = 'intro'; G.intro = { t: 0, step: 0 }; G.paused = false; $('ov-pause').hidden = true;
     G.fx.parts.length = 0; G.fx.texts.length = 0; G.bubbles.length = 0; G.crowd.excite = 0.3; G.crowd.cheer = 0;
     G.cam.override = null; G.cam.zoom = 1; G.cam.snap = true;
@@ -362,7 +362,7 @@
     showScreen('none');
     if (choice === 'pool' && !sim.poolUsed) {
       sim.applyBreakChoice('pool'); save.pool++; persist();
-      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 6.2) }; AU.crowd(0.15); AU.setMusicMode('pool'); G.cam.snap = true;
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 1.4, 8.2) }; AU.crowd(0.15); AU.setMusicMode('pool'); G.cam.snap = true; setControls(false);
       say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
     } else {
       sim.applyBreakChoice('rest');
@@ -451,6 +451,7 @@
           break;
         }
         case 'block': AU.punch('jab', true); addText(e.perfect ? '¡PARADA!' : 'BLOQUEO', e.x, e.y + 0.4, e.z, { size: 20, color: '#cfe8ff', stroke: '#10304a', life: 0.7 }); if (Math.random() < 0.2 && G.t - G.lastSayAt > 3) say(pick(e.who === 'oscar' ? LINES.blockO : LINES.blockP), e.who); break;
+        case 'guardBreak': { AU.punch('upper', true); AU.counter(); shake(10); burst(e.x, e.y, e.z, 16, { color: '#9fe9ff', speed: 2.4 }); addText('¡GUARDIA ROTA!', e.x, e.y + 0.5, e.z, { size: 34, color: '#9fe9ff', stroke: '#0a2a3a', life: 1.4 }); if (e.who === 'oscar') { G.crowd.cheer = 0.8; quote('muslera', 'bajas', { force: true }); } break; }
         case 'parry': { const h = hp('oscar'); addText('¡OSCAR LEE EL GOLPE!', h.x, h.y + 0.7, h.z, { size: 20, color: '#56cfcb', stroke: '#083a3a', life: 1 }); break; }
         case 'dodge': AU.dodge(); addText('ESQUIVA', e.x, e.y + 0.5, e.z, { size: 22, color: '#b8ffb8', stroke: '#0a3a0a', life: 0.8 }); if (e.who === 'muslera') G.fx.slow = 0.25; break;
         case 'duck': AU.whiff(); addText('¡AGACHADO!', e.x, e.y + 0.1, e.z, { size: 24, color: '#b8ffb8', stroke: '#0a3a0a', life: 0.9 }); if (Math.random() < 0.4 && G.t - G.lastSayAt > 2.5) say(pick(e.who === 'muslera' ? LINES.duckP : LINES.duckO), e.who); break;
@@ -535,7 +536,7 @@
       return moving;
     };
     // Oscar sale por la puerta de la casa; Muslera viene de la piscina con la toalla
-    const wo = walk(o, [8.75, -0.8], [6.0, 0.4], 0.4, 2.9), wp = walk(p, [3.6, 3.75], [3.6, 1.0], 3.4, 5.9);
+    const wo = I.t < 1.3 ? walk(o, [11.4, -0.8], [9.7, -0.8], 0.3, 1.3) : walk(o, [9.7, -0.8], [6.0, 1.2], 1.3, 2.9), wp = walk(p, [3.6, 4.9], [3.6, 1.8], 3.4, 5.9);
     if (!wo && !wp) sim.face();
     if (I.step === 0 && I.t > 0.6) { I.step = 1; G.crowd.cheer = 0.8; say('¡Entra OSCAR! Con medallas. Medallas de verdad. Esto empieza mal para Muslera.', 'oscar'); AU.crowdBurst(0.5); }
     if (I.step === 1 && I.t > 2.0) { I.step = 2; quote('oscar', 'btc', { force: true }); }
@@ -545,10 +546,10 @@
     if (I.step === 5 && I.t > 7.3) { I.step = 6; quote('oscar', 'dios', { force: true }); }
     const shot = I.t < 3.4 ? 1 : I.t < 6.4 ? 2 : 3;
     if (shot !== I.shot) { I.shot = shot; if (shot === 2) G.cam.snap = true; }
-    if (shot === 1) G.cam.override = { focus: { x: o.x + 0.45, y: 1.25, z: o.z + 0.65 }, yaw: Math.PI - 0.6, dist: 3.4, height: 0.25 };
-    else if (shot === 2) { const C = { x: 1.3, z: -0.3 }, fx = p.x + 0.3, fz = p.z - 0.3; G.cam.override = { focus: { x: fx, y: 1.1, z: fz }, yaw: Math.atan2(C.z - fz, C.x - fx), dist: Math.max(3.8, Math.hypot(C.x - fx, C.z - fz)), height: 0.4 }; }
+    if (shot === 1) G.cam.override = { focus: { x: Math.min(o.x, 9.9) + 0.3, y: 1.25, z: o.z + 0.5 }, yaw: Math.PI - 0.75, dist: 3.6, height: 0.3 };
+    else if (shot === 2) { const C = { x: 0.6, z: 0.0 }, fx = p.x + 0.3, fz = p.z - 0.3; G.cam.override = { focus: { x: fx, y: 1.1, z: fz }, yaw: Math.atan2(C.z - fz, C.x - fx), dist: Math.max(3.8, Math.hypot(C.x - fx, C.z - fz)), height: 0.4 }; }
     else G.cam.override = null;
-    if (I.t > 8.6) { p.x = 3.6; p.z = 0.4; o.x = 6.0; o.z = 0.4; p.moveA = o.moveA = 0; p.speed = o.speed = 0; sim.face(); beginRound1(); }
+    if (I.t > 8.6) { p.x = 3.6; p.z = 1.2; o.x = 6.0; o.z = 1.2; p.moveA = o.moveA = 0; p.speed = o.speed = 0; sim.face(); beginRound1(); }
   }
 
   function updatePool(dt) {
@@ -556,9 +557,9 @@
     const total = 7.2, ph = P.t / total;
     const walkK = clamp(ph / 0.3, 0, 1), kneel = clamp((ph - 0.3) / 0.12, 0, 1), dunk = clamp((ph - 0.42) / 0.08, 0, 1), under = ph > 0.46 && ph < 0.66, out = clamp((ph - 0.66) / 0.08, 0, 1), shaking = ph > 0.76 && ph < 0.95;
     // Oscar se queda en su esquina
-    o.state = 'idle'; o.t += dt; o.x = 6.4; o.z = 0.2;
+    o.state = 'idle'; o.t += dt; o.x = 6.4; o.z = 0.6;
     // Muslera camina hasta el borde de la piscina
-    const tx = P.px, tz = 3.78;
+    const tx = P.px, tz = 4.78; const side = tx > 4.8 ? -1 : 1;
     const k = 1 - Math.pow(1 - walkK, 2);
     p.x = lerp(P.x0, tx, k); p.z = lerp(P.z0, tz, k);
     p.yaw = -Math.PI / 2; p.fx = 0; p.fz = 1; p.t += dt;
@@ -568,7 +569,7 @@
     G.poolPose = { k: kneel, dip, under, shake: shaking, wet: ph > 0.5, hx: tx, hz: tz + 0.78, splash: mode };
     if (!P.splashed && dunk > 0) { P.splashed = true; AU.splash(); AU.bubbles(1.6); }
     if (!P.shook && shaking) { P.shook = true; AU.splash(); say('¡FRESQUITO! Muslera vuelve con la cabeza mojada y las ideas... igual de poco claras.', 'muslera'); }
-    G.cam.override = { focus: { x: tx, y: 0.4 + (1 - kneel) * 0.6, z: tz + 0.5 }, yaw: 0.7 + kneel * 0.1, dist: 3.4 - kneel * 0.3, height: 0.8 + kneel * 0.6 };
+    G.cam.override = { focus: { x: tx, y: 0.4 + (1 - kneel) * 0.6, z: tz + 0.5 }, yaw: side === 1 ? 0.7 + kneel * 0.1 : Math.PI - 0.7 - kneel * 0.1, dist: 3.4 - kneel * 0.3, height: 0.8 + kneel * 0.6 };
     if (ph >= 1) { G.poolPose = null; startNextRound(); }
   }
 
@@ -631,6 +632,8 @@
       ctx.font = font(30, '"Anton", Impact, sans-serif'); ctx.textAlign = 'center'; ctx.fillStyle = sim.roundT < 10 ? '#ff6b6b' : '#fff'; ctx.fillText(`${mm}:${String(ss).padStart(2, '0')}`, cw / 2, top);
       ctx.font = font(12); ctx.fillStyle = '#ffd7a0'; ctx.fillText(`ASALTO ${sim.round} / 3`, cw / 2, top + 32 * u);
       if (sim.p.fresh > 0) { ctx.font = font(13); ctx.fillStyle = '#9fe9ff'; ctx.textAlign = 'left'; ctx.fillText(`FRESQUITO ${Math.ceil(sim.p.fresh)}s`, pad + 56 * u + barW * 0.7 + 8 * u, top + barH + 3 * u); }
+      if (sim.p.guardBreak > 0) { ctx.font = font(13, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#ff8a8a'; ctx.textAlign = 'left'; ctx.fillText(`GUARDIA ROTA ${Math.ceil(sim.p.guardBreak)}s`, pad + 56 * u, top + barH + 50 * u); }
+      if (sim.o.guardBreak > 0) { ctx.font = font(13, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#9fe9ff'; ctx.textAlign = 'right'; ctx.fillText(`¡OSCAR SIN GUARDIA ${Math.ceil(sim.o.guardBreak)}s!`, cw - pad - 56 * u, top + barH + 50 * u); }
       if (sim.phase === 'count') {
         const down = sim.p.state === 'down' ? sim.p : sim.o; ctx.textAlign = 'center';
         if (down === sim.p) {

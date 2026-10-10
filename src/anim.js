@@ -164,7 +164,7 @@
       // cinemática de la piscina: se arrodilla y mete la cabeza
       if (opts && opts.pool) {
         const P = opts.pool, k = P.k, dip = P.dip;
-        T.lean = 0.08 + k * 1.5 + dip * 0.8; T.crouch = 0.02 + k * 0.66 + dip * 0.12; T.twist = 0; T.sway = 0;
+        T.lean = 0.08 + k * 1.2 + dip * 0.5; T.crouch = 0.02 + k * 0.62 + dip * 0.16; T.twist = 0; T.sway = 0;
         T.headTilt = (P.shake ? Math.sin(t * 28) * 0.3 : 0) + k * 0.4; T.headYaw = P.shake ? Math.sin(t * 22) * 0.3 : 0; T.headX = 0; T.headY = 0;
         T.leadX = 0.6 + k * 0.25; T.leadY = 1.0 - k * 0.55; T.leadZ = -0.26; T.rearX = 0.5 + k * 0.25; T.rearY = 0.95 - k * 0.55; T.rearZ = 0.26; T.elbowOut = 0.1;
         T.footFX = 0.3; T.footBX = -0.22 - k * 0.42; T.footFY = 0; T.footBY = 0; T.mouth = P.under ? 0 : 0.4; T.lying = 0;
@@ -209,7 +209,7 @@
 
     applyStep(f, dt) {
       const C = this.cur;
-      const moving = (f.state === 'walk' || (f.state === 'crouch' && f.speed > 0.05)) && f.speed > 0.05;
+      const moving = (f.state === 'walk' || f.state === 'block' || f.state === 'crouch') && f.speed > 0.05;
       if (moving) {
         this.stepPhase += dt * (4.5 + f.speed * 3.5);
         const ph = this.stepPhase; const sw = Math.sin(ph);

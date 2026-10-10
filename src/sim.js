@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const ARENA = { x0: 0.95, x1: 7.55, z0: -0.6, z1: 2.7, minSep: 0.95 };
+  const ARENA = { x0: 0.0, x1: 9.6, z0: -0.7, z1: 4.0, minSep: 0.95 };
   const ROUND_TIME = 60;
   const ROUNDS = 3;
   const GRAVITY = 13.5;
@@ -79,6 +79,7 @@
       this.fresh = 0; this.sweat = 0; this.rise = { need: 0, got: 0 }; this.count = 0; this.downT = 0;
       this.tauntT = 0; this.tired = false; this.face = 'normal'; this.lastHitBy = null; this.wobble = 0;
       this.airPunched = false; this.landT = 0; this.crouchT = 0; this.dir = 1;
+      this.guardHits = 0; this.guardHitT = 0; this.guardBreak = 0;
     }
     get airborne() { return this.y > 0.02 || this.state === 'jump' || this.state === 'fly'; }
     get busy() { return !['idle', 'walk', 'block', 'crouch'].includes(this.state); }
@@ -101,7 +102,7 @@
       Object.assign(this.ai, opts.ai || {});
       this.events = []; this.time = 0; this.round = 1; this.roundT = ROUND_TIME;
       this.phase = 'ready'; this.phaseT = 0; this.poolUsed = false; this.scores = []; this.result = null;
-      this.p = new Fighter('muslera', 3.6, 0.4); this.o = new Fighter('oscar', 6.0, 0.4);
+      this.p = new Fighter('muslera', 3.6, 1.2); this.o = new Fighter('oscar', 6.0, 1.2);
       this.brain = { plan: [], cooldown: 0.8, nextTaunt: 11, backoff: 0, strafeDir: 0, strafeT: 0, seenAttack: null, reaction: null, reactAt: 0, recent: [], seriousUntil: 0, crouchSeen: 0 };
       this.hitstopT = 0; this.slowmo = 1; this.totalFightTime = 0; this._timers = [];
       this.face();
@@ -113,8 +114,8 @@
 
     beginRound() {
       this.phase = 'ready'; this.phaseT = 0; this.roundT = ROUND_TIME;
-      this.p.x = 3.6; this.p.z = 0.4; this.o.x = 6.0; this.o.z = 0.4;
-      for (const f of [this.p, this.o]) { f.setState('idle'); f.y = 0; f.vy = 0; f.vx = f.vz = 0; f.stun = 0; f.openT = 0; f.invT = 0; f.comboTaken = 0; f.roundDamage = 0; f.moveA = f.moveS = 0; f.speed = 0; f.face = 'normal'; f.airPunched = false; }
+      this.p.x = 3.6; this.p.z = 1.2; this.o.x = 6.0; this.o.z = 1.2;
+      for (const f of [this.p, this.o]) { f.setState('idle'); f.y = 0; f.vy = 0; f.vx = f.vz = 0; f.stun = 0; f.openT = 0; f.invT = 0; f.comboTaken = 0; f.roundDamage = 0; f.moveA = f.moveS = 0; f.speed = 0; f.face = 'normal'; f.airPunched = false; f.guardHits = 0; f.guardBreak = 0; }
       this.brain.plan = []; this.brain.cooldown = 1.2; this.brain.nextTaunt = this.time + 8 + this.rng() * 6;
       this.face();
       this.emit('roundStart', { round: this.round });
@@ -219,20 +220,28 @@
       }
       if (it.crouch) { if (f.state !== 'crouch') { f.setState('crouch'); this.emit('crouch', { who: f.key }); } }
       else if (f.state === 'crouch') f.setState('idle');
-      if (it.block && f.stamina > 0 && f.state !== 'crouch') { if (f.state !== 'block') { f.setState('block'); f.blockT = 0; } f.speed = 0; return; }
-      else if (f.state === 'block') f.setState('idle');
       const a = it.approach || 0, s = it.strafe || 0;
+      if (it.block && f.stamina > 0 && f.state !== 'crouch' && f.guardBreak <= 0) {
+        if (f.state !== 'block') { f.setState('block'); f.blockT = 0; }
+        this.moveBy(f, a, s, dt, 0.5 * stamFactor);   // con la guardia puesta se avanza a medio paso
+        return;
+      }
+      else if (f.state === 'block') f.setState('idle');
       if (a || s) {
         const crouched = f.state === 'crouch';
-        const spA = (a > 0 ? f.profile.walk : f.profile.back) * stamFactor * (f.fresh > 0 ? 1.12 : 1) * (crouched ? 0.35 : 1);
-        const spS = f.profile.strafe * stamFactor * (crouched ? 0.35 : 1);
-        const px = -f.fz, pz = f.fx; // perpendicular (lateral)
-        let vx = f.fx * a * spA + px * s * spS, vz = f.fz * a * spA + pz * s * spS;
-        const mag = Math.hypot(vx, vz), maxSp = Math.max(spA, spS); if (mag > maxSp) { vx *= maxSp / mag; vz *= maxSp / mag; }
-        f.x = clamp(f.x + vx * dt, ARENA.x0, ARENA.x1); f.z = clamp(f.z + vz * dt, ARENA.z0, ARENA.z1);
-        f.moveA = a; f.moveS = s; f.speed = Math.hypot(vx, vz);
+        this.moveBy(f, a, s, dt, stamFactor * (f.fresh > 0 ? 1.12 : 1) * (crouched ? 0.35 : 1));
         if (f.state === 'idle') f.setState('walk');
       } else { f.speed = 0; if (f.state === 'walk') f.setState('idle'); }
+    }
+
+    moveBy(f, a, s, dt, factor) {
+      if (!a && !s) { f.speed = 0; return; }
+      const spA = (a > 0 ? f.profile.walk : f.profile.back) * factor, spS = f.profile.strafe * factor;
+      const px = -f.fz, pz = f.fx; // perpendicular (lateral)
+      let vx = f.fx * a * spA + px * s * spS, vz = f.fz * a * spA + pz * s * spS;
+      const mag = Math.hypot(vx, vz), maxSp = Math.max(spA, spS); if (mag > maxSp) { vx *= maxSp / mag; vz *= maxSp / mag; }
+      f.x = clamp(f.x + vx * dt, ARENA.x0, ARENA.x1); f.z = clamp(f.z + vz * dt, ARENA.z0, ARENA.z1);
+      f.moveA = a; f.moveS = s; f.speed = Math.hypot(vx, vz);
     }
 
     physics(f, dt) {
@@ -261,6 +270,8 @@
       else if (f.state === 'walk') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenWalk * dt);
       else if (f.state === 'block') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenIdle * 0.4 * dt);
       if (f.state === 'block') { f.blockT += dt; if (f.stamina <= 0) f.setState('idle'); }
+      if (f.guardHitT > 0) { f.guardHitT -= dt; if (f.guardHitT <= 0) f.guardHits = 0; }
+      if (f.guardBreak > 0) f.guardBreak -= dt;
       if (f.state === 'land') { f.landT -= dt; if (f.landT <= 0) f.setState('idle'); }
       if (f.move && !f.move.air) {
         const m = f.move;
@@ -336,8 +347,17 @@
         def.stamina = Math.max(0, def.stamina - def.profile.blockStamCost);
         pushDef(m.push * 0.4);
         def.hp = Math.max(0, def.hp - dmg); att.damageDealt += dmg; att.roundDamage += dmg;
-        this.emit('block', { who: def.key, by: att.key, perfect, x: hp.x, y: hp.y - 0.1, z: hp.z, dmg });
+        this.emit('block', { who: def.key, by: att.key, perfect, x: hp.x, y: hp.y - 0.1, z: hp.z, dmg, hits: def.guardHits + 1 });
         if (perfect && def.key === 'oscar') { att.openT = 0.45; this.emit('parry', { who: def.key }); }
+        // cuatro golpes seguidos a la guardia la rompen: 4 segundos sin poder cubrirse
+        def.guardHits++; def.guardHitT = 3.0;
+        if (def.guardHits >= 4) {
+          def.guardHits = 0; def.guardBreak = 4.0; def.setState('hit'); def.face = 'hit'; def.stun = 0.55; def.wobble = 0.6; def.openT = Math.max(def.openT, 0.6);
+          pushDef(0.3); this.hitstopT = 0.06;
+          this.emit('guardBreak', { who: def.key, by: att.key, x: hp.x, y: hp.y, z: hp.z });
+          this.say(def.key === 'oscar' ? '¡Muslera le rompe la guardia a Oscar! ¡Cuatro segundos de barra libre!' : 'Oscar le rompe la guardia a Muslera. Y Muslera no tenía mucha.', att.key);
+          return;
+        }
         if (def.stamina <= 0) { def.setState('idle'); def.wobble = 0.5; }
         return;
       }
@@ -450,7 +470,7 @@
         pr += A.spamRead * Math.min(3, b.swings.length - 1);
         if (this.time < b.seriousUntil) pr += 0.10;
         if (o.stamina < 28) pr *= 0.5; if (o.hp < 40) pr *= 0.8; if (o.move) pr *= 0.35;
-        b.reaction = this.rng() < pr ? (this.rng() < A.preferDodge && !o.move ? 'dodge' : 'block') : 'none';
+        b.reaction = this.rng() < pr ? ((this.rng() < A.preferDodge || o.guardBreak > 0) && !o.move ? 'dodge' : 'block') : 'none';
         b.reactAt = this.time + A.reactDelay * (0.7 + this.rng() * 0.6);
       }
       if (!p.move) b.seenAttack = null;
@@ -505,7 +525,7 @@
       const tiredO = o.stamina < 30;
       const cornered = p.distToWall() < 0.45 && dist < 1.4;
       if (cornered && b.strafeT <= 0 && this.rng() < 0.6) { b.strafeT = 0.6 + this.rng() * 0.6; b.strafeDir = this.rng() < 0.5 ? 1 : -1; b.backoff = Math.max(b.backoff, 0.4); }
-      if (b.backoff > 0 || (tiredO && dist < 1.3)) { it.approach = -1; it.strafe = b.strafeT > 0 ? b.strafeDir : 0; return it; }
+      if (b.backoff > 0 || (tiredO && dist < 1.3) || (o.guardBreak > 0 && dist < 1.4 && !b.plan.length)) { it.approach = -1; it.strafe = b.strafeT > 0 ? b.strafeDir : 0; return it; }
       if (p.state === 'down') { it.approach = -1; return it; }
 
       // --- 8. Salto ocasional desde media distancia (puñetazo volador telegrafiado)

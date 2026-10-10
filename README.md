@@ -36,7 +36,7 @@ El movimiento es relativo a la pantalla: izquierda y derecha rodean al rival, ar
 - **Esquiva con timing**: si esquivas un golpe de Oscar, se queda vendido un segundo. Un golpe ahí es una CONTRA (×1,6 de daño, no se puede bloquear).
 - **Agacharse** esquiva los golpes altos (jab y cruzado) y deja a Oscar vendido si pega al aire. Si te quedas agachado, te castiga con el uppercut (que además hace más daño a un agachado).
 - **Saltar** te saca del alcance del uppercut. Si pegas en el aire lanzas el puñetazo volador (mucho daño y empujón), pero Oscar puede bajarte de un jab y al aterrizar estás vendido medio segundo.
-- **Oscar no arrincona**: si te lleva contra la pared, da un paso atrás y rodea. Tú puedes rodearle igual.
+- **Oscar no arrincona**: si te lleva contra la pared, da un paso atrás y rodea. Tú puedes rodearle igual. El jardín mide unos 10 × 5 metros de zona de pelea, con la piscina al fondo.
 - **Oscar vacila**: cada 15–25 s, si va ganando con claridad, baja los brazos para mirar al público. Es la mejor ventana.
 - **Piscina**: entre asaltos, una sola vez por pelea, Muslera mete la cabeza en la piscina: vida al máximo, aguante al máximo y 20 s de "fresquito" (más rápido, pega más).
 - **Caídas**: a la tercera caída se acaba. Para levantarte hay que machacar botones antes del 10. Si no hay KO, deciden los jueces, que son amigos de Oscar.

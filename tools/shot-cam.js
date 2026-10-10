@@ -14,7 +14,7 @@ const OUT = '/tmp/claude-0/-home-user-JUEGO-TSM/5bd36043-0abc-52c3-84c0-56401295
     await page.click('#btn-fight'); await page.evaluate(() => { TSM_GAME.intro.t = 99; });
     await page.waitForFunction(() => TSM_GAME.screen === 'fight' && TSM_GAME.sim.phase === 'fight', null, { timeout: 60000 });
     await page.evaluate(() => { TSM_GAME.freeze = true; const s = TSM_GAME.sim; s.ai.reactJab = 0; s.brain.cooldown = 999; s.o.profile.walk = 0; s.o.profile.back = 0; s.o.profile.strafe = 0; });
-    const cases = { 'hedge': [1.0, 0.4, 2.1, 0.4], 'house': [7.5, 0.4, 6.4, 0.4], 'carpa-z': [3.0, -0.55, 3.0, 0.6], 'pool-z': [4.5, 2.65, 4.5, 1.5], 'corner': [1.0, 2.65, 2.0, 1.6], 'far': [1.0, -0.5, 7.5, 2.6] };
+    const cases = { 'hedge': [0.05, 1.2, 1.1, 1.2], 'house': [9.55, 1.2, 8.45, 1.2], 'carpa-z': [3.0, -0.65, 3.0, 0.5], 'pool-z': [4.5, 3.95, 4.5, 2.8], 'corner': [0.05, 3.95, 1.1, 2.9], 'far': [0.05, -0.65, 9.55, 3.95], 'far2': [9.55, -0.65, 0.05, 3.95] };
     for (const [name, [px, pz, ox, oz]] of Object.entries(cases)) {
       await page.evaluate(([px, pz, ox, oz]) => { const s = TSM_GAME.sim; s.p.x = px; s.p.z = pz; s.o.x = ox; s.o.z = oz; s.face(); for (let i = 0; i < 90; i++) TSM_GAME.step(1 / 30); }, [px, pz, ox, oz]);
       await page.screenshot({ path: `${OUT}/cam-${tag}-${name}.png` });
