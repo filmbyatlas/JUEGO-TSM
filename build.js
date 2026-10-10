@@ -3,7 +3,7 @@ const fs = require('fs');
 const read = f => fs.readFileSync(f, 'utf8');
 let page = read('src/page.html');
 const inline = (marker, file) => { page = page.replace(`<script>/*${marker}*/</script>`, () => `<script>\n${read(file)}\n</script>`); };
-inline('SIM', 'src/sim.js'); inline('DRAW3D', 'src/draw3d.js'); inline('AUDIO', 'src/audio.js'); inline('DRAW', 'src/draw.js'); inline('GAME', 'src/game.js');
+inline('SIM', 'src/sim.js'); inline('DRAW3D', 'src/draw3d.js'); inline('AUDIO', 'src/audio.js'); inline('DRAW', 'src/draw.js'); inline('ANIM', 'src/anim.js'); inline('GAME', 'src/game.js');
 fs.mkdirSync('dist', { recursive: true });
 fs.writeFileSync('dist/artifact.html', page);
 const full = `<!doctype html>

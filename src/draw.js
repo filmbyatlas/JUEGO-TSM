@@ -677,7 +677,7 @@
     for (const ex of [S * 0.42, S * 0.58]) {
       const ey = S * 0.49, er = S * 0.035;
       if (face === 'ko') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(ex - er, ey - er); ctx.lineTo(ex + er, ey + er); ctx.moveTo(ex + er, ey - er); ctx.lineTo(ex - er, ey + er); ctx.stroke(); continue; }
-      if (face === 'hit' || face === 'happy') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(ex - er, ey + er * 0.3); ctx.quadraticCurveTo(ex, ey - er * (face === 'happy' ? 1 : 0.6), ex + er, ey + er * 0.3); ctx.stroke(); continue; }
+      if (face === 'hit' || face === 'happy' || face === 'blink') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(ex - er, ey + er * 0.3); ctx.quadraticCurveTo(ex, ey - er * (face === 'happy' ? 1 : face === 'blink' ? 0.2 : 0.6), ex + er, ey + er * 0.3); ctx.stroke(); continue; }
       const open = face === 'tired' ? 0.5 : face === 'angry' ? 0.75 : 1;
       ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.006; ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 0.8 * open, 0, 0, TAU); ctx.fill(); ctx.stroke();
       ctx.fillStyle = '#3b2412'; ell(ctx, ex, ey, er * 0.5, er * 0.5 * open); ctx.fill(); ctx.fillStyle = '#000'; ell(ctx, ex, ey, er * 0.25, er * 0.25 * open); ctx.fill();

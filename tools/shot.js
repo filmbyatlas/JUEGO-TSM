@@ -25,12 +25,15 @@ const OUT = process.argv[2] || '/tmp/claude-0/-home-user-JUEGO-TSM/5bd36043-0abc
   await page.keyboard.down('ArrowRight'); await page.waitForTimeout(900); await page.keyboard.up('ArrowRight');
   for (let i = 0; i < 6; i++) { await page.keyboard.press('KeyJ'); await page.waitForTimeout(350); await page.keyboard.press('KeyL'); await page.waitForTimeout(500); }
   await page.screenshot({ path: OUT + '/05-fight.png' });
-  await page.keyboard.down('KeyS'); await page.waitForTimeout(400); await page.screenshot({ path: OUT + '/06-block.png' }); await page.keyboard.up('KeyS');
+  await page.keyboard.down('ShiftLeft'); await page.waitForTimeout(400); await page.screenshot({ path: OUT + '/06-block.png' }); await page.keyboard.up('ShiftLeft');
+  await page.keyboard.down('ControlLeft'); await page.waitForTimeout(500); await page.screenshot({ path: OUT + '/06b-crouch.png' }); await page.keyboard.up('ControlLeft');
+  await page.keyboard.press('Space'); await page.waitForTimeout(250); await page.screenshot({ path: OUT + '/06c-jump.png' }); await page.keyboard.press('KeyK'); await page.waitForTimeout(150); await page.screenshot({ path: OUT + '/06d-fly.png' });
+  await page.waitForTimeout(900); await page.keyboard.down('ArrowUp'); await page.waitForTimeout(700); await page.keyboard.up('ArrowUp'); await page.screenshot({ path: OUT + '/06e-strafe.png' });
   // forzar fin de asalto para ver la pausa
   await page.evaluate(() => { TSM_GAME.sim.roundT = 0.2; });
   await page.waitForFunction(() => !document.getElementById('ov-break').hidden, null, { timeout: 60000 }); await page.waitForTimeout(300); await page.screenshot({ path: OUT + '/07-break.png' });
   await page.click('#btn-pool');
-  const waitPool = (ph) => page.waitForFunction((ph) => TSM_GAME.screen !== 'pool' || TSM_GAME.pool.t / 6.5 > ph, ph, { timeout: 60000 });
+  const waitPool = (ph) => page.waitForFunction((ph) => TSM_GAME.screen !== 'pool' || TSM_GAME.pool.t / 7.2 > ph, ph, { timeout: 60000 });
   await waitPool(0.15); await page.screenshot({ path: OUT + '/08-pool-walk.png' });
   await waitPool(0.5); await page.screenshot({ path: OUT + '/09-pool-dunk.png' });
   await waitPool(0.85); await page.screenshot({ path: OUT + '/10-pool-shake.png' });

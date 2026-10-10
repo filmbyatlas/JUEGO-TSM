@@ -21,37 +21,44 @@ html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 18px; line-height: 1.3; overflow: hidden; -webkit-text-size-adjust: 100%; }
 * { box-sizing: border-box; }
 #stage { height: 100%; display: flex; flex-direction: column; position: relative; }
-body.touch.portrait.playing #arena { flex: 0 0 auto; height: min(78vw, 58vh); }
-body.touch.portrait.playing #controls { flex: 1 1 auto; align-items: center; padding-top: 18px; }
+body.touch.portrait.playing #arena { flex: 1 1 auto; min-height: 40vh; }
+body.touch.portrait.playing #controls { flex: 0 0 auto; align-items: center; padding-top: 14px; }
 body.touch.portrait.playing .ctl { width: 68px; height: 68px; } body.touch.portrait.playing .ctl.move { width: 64px; height: 84px; } body.touch.portrait.playing .ctl-def .ctl { width: 78px; height: 56px; }
-body.touch #topbar { top: auto; bottom: 8px; }
+
 body.touch:not(.playing) #btn-pause { display: none; }
 /* táctil en horizontal: la botonera flota sobre el escenario para no robar altura */
 body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.45)); border-top: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
-body.touch.playing:not(.portrait) #controls .ctl { pointer-events: auto; opacity: 0.82; }
-body.touch.playing:not(.portrait) #topbar { bottom: auto; top: 44%; transform: translateY(-50%); right: 4px; flex-direction: column; gap: 4px; }
-body.touch.playing:not(.portrait) #topbar button { width: 32px; height: 32px; font-size: 14px; opacity: 0.75; }
-/* táctil en vertical: dos filas de botones a la derecha */
-body.touch.portrait.playing .ctl-group.right { flex-wrap: wrap; justify-content: flex-end; width: 222px; row-gap: 8px; }
-body.touch.portrait.playing .ctl-def { flex-direction: row; width: 100%; justify-content: flex-end; }
-body.touch.portrait.playing .ctl-def .ctl { width: 100px; }
-body.touch.portrait.playing .ctl.move { width: 56px; height: 120px; }
-body.touch.portrait.playing .ctl-group.right .ctl:not(.dodge):not(.block) { width: 66px; height: 66px; }
+body.touch.playing:not(.portrait) #controls .ctl, body.touch.playing:not(.portrait) #joy { pointer-events: auto; opacity: 0.85; }
+body.touch.playing:not(.portrait) #topbar { bottom: 6px; right: auto; left: 50%; transform: translateX(-50%); gap: 6px; }
+body.touch.playing:not(.portrait) #topbar button { width: 34px; height: 34px; font-size: 14px; opacity: 0.75; }
+/* táctil en vertical: joystick grande y dos filas de botones */
+body.touch.portrait.playing #joy { width: 150px; height: 170px; }
+body.touch.portrait.playing .ctl-group.right .ctl { width: 66px; height: 66px; }
+body.touch.portrait.playing .ctl-group.right .ctl.small { height: 46px; }
 #arena { position: relative; flex: 1 1 auto; min-height: 0; background: #070a14; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
 #game, #game3d { display: block; position: absolute; inset: 0; }
 #game { pointer-events: none; }
-#topbar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
+#topbar { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
 #topbar button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,0.55); color: var(--fg); font-size: 18px; cursor: pointer; }
 #topbar button.off { opacity: 0.55; }
 body:not(.touch) #btn-full { display: none; }
 #topbar button:focus-visible, .btn:focus-visible, .ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 body:not(.touch) #btn-pause { display: none; }
 
+/* joystick flotante */
+#joy { position: relative; width: 170px; height: 150px; touch-action: none; border-radius: 16px; background: rgba(255,255,255,0.03); flex: 0 0 auto; }
+#joy-base { position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.06); left: 50%; top: 50%; opacity: 0.55; pointer-events: none; }
+#joy-base.on { opacity: 1; }
+#joy-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #fff, #c9c9d8 60%, #8e8ea0); box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+#joy-hint { position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 700; pointer-events: none; }
 /* botonera táctil */
 #controls { display: none; flex: 0 0 auto; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: linear-gradient(180deg, #14101c, #0b0810); border-top: 1px solid var(--line); }
 #controls.active { display: flex; }
 body:not(.touch) #controls { display: none !important; }
 #controls { justify-content: space-between; align-items: flex-end; gap: 10px; }
+.ctl-group.right { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; justify-items: end; }
+.ctl.small { height: 44px; width: 66px; font-size: 13px; }
+.ctl.jump { background: #7a5fd0; } .ctl.crouch { background: #5a7a3a; }
 .ctl-group { display: flex; gap: 8px; align-items: flex-end; }
 .ctl { border: 0; border-radius: 14px; font-family: var(--display); font-size: 17px; letter-spacing: 0.04em; color: #fff; background: #2a2433; box-shadow: 0 4px 0 #15111b, inset 0 1px 0 rgba(255,255,255,0.12); width: 64px; height: 64px; touch-action: none; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; }
 .ctl small { font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; letter-spacing: 0.05em; }
@@ -61,8 +68,8 @@ body:not(.touch) #controls { display: none !important; }
 .ctl.dodge { background: #2f8a7f; } .ctl.block { background: #3a5a9a; }
 .ctl-def { display: flex; flex-direction: column; gap: 8px; }
 .ctl-def .ctl { height: 50px; width: 72px; font-size: 14px; }
-@media (max-width: 420px) { .ctl { width: 56px; height: 56px; font-size: 15px; } .ctl.move { width: 50px; height: 64px; } .ctl-def .ctl { width: 62px; height: 46px; } .ctl-group { gap: 6px; } }
-@media (max-width: 380px) { body.touch.portrait.playing .ctl { width: 58px; height: 62px; } body.touch.portrait.playing .ctl.move { width: 54px; height: 76px; } body.touch.portrait.playing .ctl-def .ctl { width: 66px; height: 50px; } }
+@media (max-width: 420px) { .ctl { width: 56px; height: 56px; font-size: 15px; } .ctl.small { width: 60px; height: 42px; } .ctl-group { gap: 6px; } #joy { width: 140px; height: 140px; } }
+@media (max-width: 380px) { body.touch.portrait.playing .ctl-group.right .ctl { width: 58px; height: 58px; } body.touch.portrait.playing .ctl-group.right .ctl.small { height: 42px; } body.touch.portrait.playing #joy { width: 130px; height: 150px; } }
 
 /* menús superpuestos */
 .overlay { position: absolute; inset: 0; z-index: 4; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px; background: radial-gradient(ellipse at 50% 40%, rgba(10,8,16,0.55), rgba(5,4,10,0.9)); }
@@ -165,13 +172,17 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
               <li>Tres asaltos de un minuto. Gana quien tumbe tres veces al otro, o los jueces deciden al final. Los jueces son amigos de Oscar.</li>
               <li><span class="tag pink">Muslera</span> va siempre con la guardia baja: su bloqueo tarda en subir y es flojo. A cambio, con las manos tan abajo, el <b>uppercut le sale rapidísimo</b> y pega como un camión.</li>
               <li><span class="tag cyan">Oscar</span> va bien plantado, bloquea casi todo, lee los golpes repetidos y castiga cuando te ve vendido.</li>
+              <li>Te mueves libremente por el césped: acércate, retrocede o <b>rodea</b> a Oscar para no quedarte arrinconado.</li>
+              <li><b>Agacharte</b> esquiva los golpes altos (jab y cruzado): si Oscar pega al aire, se queda vendido. Pero si te quedas agachado te castiga con el uppercut.</li>
+              <li><b>Saltar</b> te saca del uppercut y, si pegas en el aire, lanzas el <b>puñetazo volador</b>: mucho daño, pero si te ven venir te bajan de un jab y al aterrizar estás vendido.</li>
               <li>Si te tumban, <b>machaca los botones</b> para levantarte antes del 10. Cada caída cuesta más levantarse.</li>
             </ul>
           </div>
           <div>
             <h3>Cómo se le gana (una de cada veinte, con suerte)</h3>
             <ul>
-              <li><b>Esquiva</b> justo cuando Oscar lanza: se queda vendido un segundo. Métele el uppercut ahí. Eso es una <b>CONTRA</b> y duele el doble.</li>
+              <li><b>Esquiva</b> (o agáchate) justo cuando Oscar lanza: se queda vendido un segundo. Métele el uppercut ahí. Eso es una <b>CONTRA</b> y duele mucho más.</li>
+              <li>Cuantos más cinturones tengas, un poco más serio se pone Oscar. Sin cinturones, un jugador normal le gana una de cada cinco.</li>
               <li>De vez en cuando Oscar <b>se pone chulo</b> y baja los brazos para mirar al público. Es tu momento.</li>
               <li>No repitas el mismo golpe tres veces: Oscar lo lee. Y no te quedes sin aguante: pegarás a cámara lenta.</li>
               <li>Entre asaltos puedes <b>meter la cabeza en la piscina</b> una sola vez por pelea: recuperas vida, aguante al máximo y 20 segundos de fresquito.</li>
@@ -180,8 +191,8 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
           <div>
             <h3>Controles</h3>
             <ul>
-              <li>Teclado: <kbd>←</kbd> <kbd>→</kbd> o <kbd>A</kbd> <kbd>D</kbd> moverse · <kbd>J</kbd> jab · <kbd>K</kbd> cruzado · <kbd>L</kbd> uppercut · <kbd>Espacio</kbd> esquivar · <kbd>S</kbd> o <kbd>Shift</kbd> guardia · <kbd>Esc</kbd> pausa.</li>
-              <li>Móvil: botones en pantalla. Mejor en horizontal. Mantén pulsada la guardia.</li>
+              <li>Teclado: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> o flechas para moverte (relativo a la pantalla) · <kbd>J</kbd> jab · <kbd>K</kbd> cruzado · <kbd>L</kbd> uppercut · <kbd>Espacio</kbd> saltar · <kbd>Ctrl</kbd> agacharte · <kbd>Shift</kbd> guardia · <kbd>Q</kbd> o <kbd>V</kbd> esquivar · <kbd>Esc</kbd> pausa.</li>
+              <li>Móvil: joystick a la izquierda para moverte y botones a la derecha. Mejor en horizontal. Mantén pulsadas GUARDIA y AGACHAR.</li>
             </ul>
           </div>
         </div>
@@ -230,6 +241,13 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       </div>
     </section>
 
+    <section class="overlay" id="ov-nogl" hidden>
+      <div class="panel">
+        <h2>SIN 3D</h2>
+        <div class="state">Tu navegador no puede mostrar gráficos 3D (WebGL). Prueba con Chrome o Safari actualizados, o desde otro dispositivo.</div>
+      </div>
+    </section>
+
     <section class="overlay" id="ov-pause" hidden>
       <div class="panel">
         <h2>PAUSA</h2>
@@ -239,18 +257,18 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     </section>
 
   <div id="controls">
-    <div class="ctl-group">
-      <button class="ctl move" data-a="left" type="button" aria-label="Izquierda">◀</button>
-      <button class="ctl move" data-a="right" type="button" aria-label="Derecha">▶</button>
+    <div id="joy" aria-label="Joystick de movimiento">
+      <div id="joy-base"><div id="joy-knob"></div></div>
+      <div id="joy-hint">mover</div>
     </div>
     <div class="ctl-group right">
-      <div class="ctl-def">
-        <button class="ctl dodge" data-a="dodge" type="button">ESQUIVA</button>
-        <button class="ctl block" data-a="block" type="button">GUARDIA</button>
-      </div>
+      <button class="ctl dodge small" data-a="dodge" type="button">ESQUIVA</button>
+      <button class="ctl crouch small" data-a="crouch" type="button">AGACHAR</button>
+      <button class="ctl jump small" data-a="jump" type="button">SALTO</button>
       <button class="ctl jab" data-a="jab" type="button">JAB</button>
       <button class="ctl cross" data-a="cross" type="button">CRUZ<small>cruzado</small></button>
       <button class="ctl upper" data-a="upper" type="button">UPPER</button>
+      <button class="ctl block small" data-a="block" type="button" style="grid-column: 1 / span 3; width: 100%;">GUARDIA (mantener)</button>
     </div>
   </div>
 </div>
@@ -259,5 +277,6 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
 <script>/*SIM*/</script>
 <script>/*AUDIO*/</script>
 <script>/*DRAW*/</script>
+<script>/*ANIM*/</script>
 <script>/*DRAW3D*/</script>
 <script>/*GAME*/</script>
