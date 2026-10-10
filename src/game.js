@@ -67,6 +67,8 @@
     loadSave();
     G.canvas = $('game'); G.ctx = G.canvas.getContext('2d');
     G.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+    G.use3d = !!(root.TSM_3D && root.TSM_3D.init($('game3d'), { mobile: G.touch }));
+    if (!G.use3d) $('game3d').hidden = true;
     document.body.classList.toggle('touch', G.touch);
     AU.muted = !!save.muted; updateMuteBtn();
     bindInput(); bindUI();
@@ -84,6 +86,7 @@
     G.cw = Math.max(1, Math.round(r.width)); G.ch = Math.max(1, Math.round(r.height));
     G.canvas.width = Math.round(G.cw * G.dpr); G.canvas.height = Math.round(G.ch * G.dpr);
     G.canvas.style.width = G.cw + 'px'; G.canvas.style.height = G.ch + 'px';
+    if (G.use3d) { const c3 = $('game3d'); c3.style.width = G.cw + 'px'; c3.style.height = G.ch + 'px'; root.TSM_3D.resize(G.cw, G.ch); }
   }
 
   function showScreen(name) {
@@ -194,7 +197,7 @@
     showScreen('none');
     if (choice === 'pool' && !sim.poolUsed) {
       sim.applyBreakChoice('pool'); save.pool++; persist();
-      G.screen = 'pool'; G.pool = { t: 0, splashed: false, bubbled: false }; AU.crowd(0.15);
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, bubbled: false, healed: true }; AU.crowd(0.15);
       say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
     } else {
       sim.applyBreakChoice('rest');
@@ -204,6 +207,7 @@
   function startNextRound() {
     const sim = G.sim; sim.nextRound();
     G.screen = 'fight'; G.roundCard = { text: 'ASALTO ' + sim.round, t: 0 };
+    if (G.pool.healed) { G.pool.healed = false; setTimeout(() => addText('¡VIDA AL MÁXIMO!', sim.p.x, FLOOR - 280, { size: 34, color: '#8dffb0', stroke: '#0a3a1a', life: 1.6, vy: -25 }), 600); }
     say(pick(LINES.roundStart[sim.round] || LINES.roundStart[3]), '');
     AU.crowd(0.3);
     setControls(G.touch);
@@ -218,7 +222,7 @@
     $('break-judges').textContent = judgesMsg;
     const hp = Math.round(sim.p.hp), st = Math.round(sim.p.stamina);
     $('break-state').textContent = `Muslera: ${hp}% de vida · ${st}% de aguante`;
-    $('btn-pool').disabled = sim.poolUsed; $('btn-pool').querySelector('small').textContent = sim.poolUsed ? 'Ya la has usado. Solo una vez por pelea.' : '+30 vida · aguante al máximo · 20 s fresquito';
+    $('btn-pool').disabled = sim.poolUsed; $('btn-pool').querySelector('small').textContent = sim.poolUsed ? 'Ya la has usado. Solo una vez por pelea.' : 'VIDA AL MÁXIMO · aguante al máximo · 20 s fresquito';
     showScreen('break');
   }
 
@@ -309,7 +313,7 @@
   // ----------------------------------------------------------- bucle
   function loop(now) {
     requestAnimationFrame(loop);
-    const dtRaw = Math.min(0.05, (now - (G.last || now)) / 1000); G.last = now;
+    const dtRaw = Math.min(0.05, (now - (G.last || now)) / 1000); G.last = now; G.lastDt = dtRaw;
     G.t += dtRaw;
     if (!G.paused) update(dtRaw);
     render();
@@ -393,55 +397,63 @@
     ctx.clearRect(0, 0, cw, ch);
     const sim = G.sim;
     if (G.screen === 'pool' && sim) { renderPool(ctx); return; }
-    // --- mundo
+    let toScreen, s;
+    if (G.use3d) {
+      const R3 = root.TSM_3D;
+      R3.render({ sim, t: G.t, dt: G.lastDt || 0.016, screen: G.screen, cheer: G.crowd.cheer, excite: G.crowd.excite, intro: G.screen === 'intro', vw: G.cam.vw, cx: G.cam.x, shake: G.cam.shake, results: G.results });
+      toScreen = R3.project; s = R3.pxPerLogical();
+    } else {
+      const r = render2D(ctx); toScreen = r.toScreen; s = r.scale;
+    }
+    G.toScreen = toScreen; G.pxScale = s;
+    drawEffects(ctx, toScreen, s);
+    if (G.fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.fx.flash * 0.6})`; ctx.fillRect(0, 0, cw, ch); }
+    const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.4, cw / 2, ch / 2, Math.max(cw, ch) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
+    if (sim && ['fight', 'over', 'corner', 'intro'].includes(G.screen)) renderHUD(ctx);
+  }
+
+  // mundo en 2D (si no hay WebGL)
+  function render2D(ctx) {
+    const cw = G.cw, ch = G.ch, sim = G.sim;
     let scale = cw / G.cam.vw;
-    if (ch / scale < 345) scale = ch / 345;             // pantallas muy bajas: alejar para que quepan las cabezas
-    const vh = ch / scale;
-    const vwReal = cw / scale;
+    if (ch / scale < 345) scale = ch / 345;
+    const vh = ch / scale, vwReal = cw / scale;
     const camX = clamp(G.cam.x - vwReal / 2, Math.min(0, (W - vwReal) / 2), Math.max(0, W - vwReal));
-    const camY = FLOOR + 95 - vh;                 // el suelo queda a ~95px lógicos del borde inferior
+    const camY = FLOOR + 95 - vh;
     const sh = G.cam.shake; const sx = (Math.random() - 0.5) * sh, sy = (Math.random() - 0.5) * sh;
     ctx.save();
     ctx.scale(scale, scale); ctx.translate(-camX + sx, -camY + sy);
-    // relleno fuera del fondo (cielo arriba, césped abajo)
     ctx.fillStyle = '#070a14'; ctx.fillRect(camX - 50, camY - 600, vwReal + 100, 600 - camY + 10);
     ctx.fillStyle = '#0f2a12'; ctx.fillRect(camX - 50, 60, 50 - camX, 360);
     ctx.fillStyle = '#8c7a5a'; ctx.fillRect(W, 90, vwReal, 330);
     ctx.fillStyle = '#1f6a22'; ctx.fillRect(camX - 50, 415, vwReal + 100, 700);
     ctx.drawImage(D.background(), 0, 0);
-    const cheer = G.crowd.cheer; D.drawSpectators(ctx, G.t, G.crowd.excite, cheer);
-    if (sim) {
+    D.drawSpectators(ctx, G.t, G.crowd.excite, G.crowd.cheer);
+    if (sim && ['fight', 'intro', 'over', 'corner'].includes(G.screen)) {
       const intro = G.screen === 'intro';
-      const order = sim.p.x < sim.o.x ? [sim.p, sim.o] : [sim.o, sim.p];
-      // el que está "más cerca de cámara" (más a la izquierda... en realidad el que ataca) va delante
       const front = sim.p.move ? sim.p : sim.o.move ? sim.o : (sim.p.state === 'down' ? sim.o : sim.p);
       const back = front === sim.p ? sim.o : sim.p;
-      D.drawFighter(ctx, back, G.t, { medals: intro && back.key === 'oscar', towel: intro && back.key === 'muslera', wet: back.fresh > 0, entrance: intro && back.state === 'walk' });
-      D.drawFighter(ctx, front, G.t, { medals: intro && front.key === 'oscar', towel: intro && front.key === 'muslera', wet: front.fresh > 0, entrance: intro && front.state === 'walk' });
-      void order;
+      for (const f of [back, front]) D.drawFighter(ctx, f, G.t, { medals: intro && f.key === 'oscar', towel: intro && f.key === 'muslera', wet: f.fresh > 0, entrance: intro && f.state === 'walk' });
     }
     D.drawForeground(ctx);
-    // partículas y anillos
-    for (const r of G.fx.ring) { const k = r.t / 0.35; ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = (r.big ? 6 : 3) * (1 - k); ctx.beginPath(); ctx.arc(r.x, r.y, (r.big ? 90 : 50) * k + 10, 0, Math.PI * 2); ctx.stroke(); }
-    for (const p of G.fx.parts) { const a = 1 - p.t / p.life; ctx.globalAlpha = a; ctx.fillStyle = p.color; if (p.kind === 'drop') { ctx.beginPath(); ctx.ellipse(p.x, p.y, p.r * 0.7, p.r * 1.3, 0, 0, Math.PI * 2); ctx.fill(); } else { ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); } }
+    ctx.restore();
+    return { toScreen: (x, y) => ({ x: (x - camX + sx) * scale, y: (y - camY + sy) * scale }), scale };
+  }
+
+  // partículas, anillos y textos flotantes en coordenadas de pantalla
+  function drawEffects(ctx, toScreen, s) {
+    for (const r of G.fx.ring) { const k = r.t / 0.35; const p = toScreen(r.x, r.y); ctx.strokeStyle = `rgba(255,255,255,${1 - k})`; ctx.lineWidth = (r.big ? 6 : 3) * (1 - k) * s; ctx.beginPath(); ctx.arc(p.x, p.y, ((r.big ? 90 : 50) * k + 10) * s, 0, Math.PI * 2); ctx.stroke(); }
+    for (const p of G.fx.parts) { const a = 1 - p.t / p.life; const q = toScreen(p.x, p.y); ctx.globalAlpha = a; ctx.fillStyle = p.color; ctx.beginPath(); if (p.kind === 'drop') ctx.ellipse(q.x, q.y, p.r * 0.7 * s, p.r * 1.3 * s, 0, 0, Math.PI * 2); else ctx.arc(q.x, q.y, p.r * s, 0, Math.PI * 2); ctx.fill(); }
     ctx.globalAlpha = 1;
     for (const t of G.fx.texts) {
       const k = t.t / t.life; const pop = t.t < 0.12 ? 0.6 + t.t / 0.12 * 0.5 : 1.1 - Math.min(0.1, (t.t - 0.12));
-      ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.rot); ctx.scale(pop, pop); ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
+      const q = toScreen(t.x, t.y);
+      ctx.save(); ctx.translate(q.x, q.y); ctx.rotate(t.rot); ctx.scale(pop * s, pop * s); ctx.globalAlpha = k > 0.7 ? (1 - k) / 0.3 : 1;
       ctx.font = `${t.size}px "Anton", Impact, "Arial Black", sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.lineWidth = Math.max(3, t.size / 7); ctx.strokeStyle = t.stroke; ctx.lineJoin = 'round'; ctx.strokeText(t.text, 0, 0); ctx.fillStyle = t.color; ctx.fillText(t.text, 0, 0);
       ctx.restore();
     }
-    ctx.restore();
-    if (G.fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.fx.flash * 0.6})`; ctx.fillRect(0, 0, cw, ch); }
-    // viñeta
-    const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.4, cw / 2, ch / 2, Math.max(cw, ch) * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.45)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, cw, ch);
-    // --- HUD
-    if (sim && ['fight', 'over', 'corner', 'intro'].includes(G.screen)) renderHUD(ctx);
-    if (G.screen === 'title') renderTitleBg(ctx);
   }
-
-  function renderTitleBg(ctx) { /* el fondo del mundo ya se ve detrás del menú */ }
 
   function renderHUD(ctx) {
     const sim = G.sim, cw = G.cw, ch = G.ch;
@@ -542,10 +554,13 @@
   function renderPool(ctx) {
     const cw = G.cw, ch = G.ch;
     // encajar 960x540 con "cover"
-    const scale = Math.max(cw / W, ch / H); const ox = (cw - W * scale) / 2, oy = (ch - H * scale) / 2;
-    ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
-    D.drawPoolScene(ctx, G.t, G.sim.p, G.pool.t / 6.5);
-    ctx.restore();
+    if (G.use3d) { root.TSM_3D.renderPool(G.t, G.pool.t / 6.5); }
+    else {
+      const scale = Math.max(cw / W, ch / H); const ox = (cw - W * scale) / 2, oy = (ch - H * scale) / 2;
+      ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
+      D.drawPoolScene(ctx, G.t, G.sim.p, G.pool.t / 6.5);
+      ctx.restore();
+    }
     const u = clamp(Math.min(cw / 960, ch / 540), 0.45, 1.4);
     ctx.textAlign = 'center'; ctx.textBaseline = 'top'; ctx.font = `${44 * u}px "Anton", Impact, sans-serif`; ctx.lineWidth = 6 * u; ctx.strokeStyle = '#06253a'; ctx.fillStyle = '#bff0ff';
     const ph = G.pool.t / 6.5; const txt = ph < 0.4 ? 'ENTRE ASALTOS: LA PISCINA' : ph < 0.7 ? 'GLU GLU GLU' : '¡FRESQUITO!';

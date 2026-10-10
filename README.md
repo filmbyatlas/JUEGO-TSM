@@ -6,7 +6,7 @@ Está pensado para que ganar sea muy difícil: en simulaciones, un jugador que a
 
 ## Jugar
 
-Abre `index.html` en un navegador (móvil o escritorio). Todo va en un solo archivo, sin dependencias ni servidor.
+Abre `index.html` en un navegador (móvil o escritorio). Todo va en un solo archivo; solo carga three.js desde un CDN para el 3D (si no hay WebGL, cae al render 2D).
 
 Para publicarlo con un enlace: activa **GitHub Pages** en este repositorio (Settings → Pages → Branch `main`, carpeta `/`), y quedará en `https://filmbyatlas.github.io/JUEGO-TSM/`.
 
@@ -29,7 +29,7 @@ Para publicarlo con un enlace: activa **GitHub Pages** en este repositorio (Sett
 - **Oscar** bloquea casi todo, reacciona a los golpes repetidos, remata cuando te aturde y castiga cuando quedas vendido.
 - **Esquiva con timing**: si esquivas un golpe de Oscar, se queda vendido un segundo. Un golpe ahí es una CONTRA (×1,6 de daño, no se puede bloquear).
 - **Oscar vacila**: cada 15–25 s, si va ganando con claridad, baja los brazos para mirar al público. Es la mejor ventana.
-- **Piscina**: entre asaltos, una sola vez por pelea, Muslera mete la cabeza en la piscina: +30 de vida, aguante al máximo y 20 s de "fresquito" (más rápido, pega más).
+- **Piscina**: entre asaltos, una sola vez por pelea, Muslera mete la cabeza en la piscina: vida al máximo, aguante al máximo y 20 s de "fresquito" (más rápido, pega más).
 - **Caídas**: a la tercera caída se acaba. Para levantarte hay que machacar botones antes del 10. Si no hay KO, deciden los jueces, que son amigos de Oscar.
 - **Cinturones** por victorias acumuladas (se guardan en el navegador): 1 blanco, 3 amarillo, 5 naranja, 10 verde, 25 azul, 50 marrón y 100 el cinturón negro KLK.
 
@@ -37,7 +37,8 @@ Para publicarlo con un enlace: activa **GitHub Pages** en este repositorio (Sett
 
 ```
 src/sim.js     motor de combate (lógica pura, sin render; se usa también en Node)
-src/draw.js    escenario, público, luchadores, piscina, cinturones (canvas procedural)
+src/draw3d.js  escenario, público, luchadores y piscina en 3D (three.js, low-poly, caras en textura)
+src/draw.js    versión 2D de respaldo, retratos, cinturones y texturas de cara (canvas procedural)
 src/audio.js   sonidos sintetizados con WebAudio
 src/game.js    bucle, cámara, HUD, menús, entrada táctil y teclado, progreso
 src/page.html  maquetación y estilos

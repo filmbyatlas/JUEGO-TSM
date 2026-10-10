@@ -154,7 +154,7 @@
       o.hp = Math.min(o.maxHp, o.hp + 10); o.stamina = Math.min(o.maxStamina, o.stamina + 45);
       if (choice === 'pool' && !this.poolUsed) {
         this.poolUsed = true;
-        p.hp = Math.min(p.maxHp, p.hp + 30); p.stamina = p.maxStamina; p.fresh = 22;
+        p.hp = p.maxHp; p.stamina = p.maxStamina; p.fresh = 22;
         this.emit('pool');
       } else {
         p.hp = Math.min(p.maxHp, p.hp + 10); p.stamina = Math.min(p.maxStamina, p.stamina + 40);

@@ -629,6 +629,70 @@
     }
   }
 
+  // ----------------------------------------------------------- textura facial (3D)
+  // Pinta una cara frontal en un lienzo cuadrado que se envuelve sobre una esfera:
+  // el centro horizontal es el frente, la franja superior es el pelo.
+  function paintFaceTexture(ctx, key, face, opts) {
+    const C = CHARS[key]; opts = opts || {}; const wet = !!opts.wet;
+    const S = ctx.canvas.width; const cx = S / 2, cy = S * 0.5;
+    const skin = wet ? C.skinDark : C.skin;
+    ctx.fillStyle = skin; ctx.fillRect(0, 0, S, S);
+    // sombra del cuello / nuca
+    ctx.fillStyle = 'rgba(120,60,30,0.18)'; ctx.fillRect(0, S * 0.86, S, S * 0.14);
+    // pelo: franja superior completa + bordes laterales/traseros
+    const hair = wet ? '#1f140a' : C.hair;
+    ctx.fillStyle = hair;
+    if (C.hairStyle === 'short') {
+      ctx.fillRect(0, 0, S, S * 0.3);
+      // nuca y laterales degradados (fade)
+      ctx.fillStyle = 'rgba(30,20,14,0.55)'; ctx.fillRect(0, S * 0.3, S * 0.3, S * 0.18); ctx.fillRect(S * 0.7, S * 0.3, S * 0.3, S * 0.18);
+      ctx.fillStyle = hair;
+      // línea del pelo con tupé hacia delante
+      ctx.beginPath(); ctx.moveTo(S * 0.3, S * 0.3); ctx.quadraticCurveTo(S * 0.5, S * 0.4, S * 0.7, S * 0.3); ctx.lineTo(S * 0.7, 0); ctx.lineTo(S * 0.3, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = C.hairHi; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(S * 0.38, S * 0.12); ctx.quadraticCurveTo(S * 0.5, S * 0.06, S * 0.62, S * 0.12); ctx.stroke();
+    } else {
+      ctx.fillRect(0, 0, S, S * 0.36);
+      ctx.fillRect(0, 0, S * 0.26, S * 0.72); ctx.fillRect(S * 0.74, 0, S * 0.26, S * 0.72); // melena larga por detrás y lados
+      // flequillo: mechones ondulados sobre la frente
+      ctx.beginPath(); ctx.moveTo(S * 0.26, S * 0.36);
+      for (let i = 0; i < 6; i++) { const x0 = S * 0.26 + i * S * 0.08, x1 = x0 + S * 0.08; ctx.quadraticCurveTo(x0 + S * 0.04, S * (wet ? 0.5 : 0.46), x1, S * 0.36); }
+      ctx.lineTo(S * 0.74, 0); ctx.lineTo(S * 0.26, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = wet ? '#3a2714' : C.hairHi; ctx.lineWidth = S * 0.014;
+      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(S * (0.3 + i * 0.1), S * 0.08); ctx.quadraticCurveTo(S * (0.35 + i * 0.1), S * 0.22, S * (0.33 + i * 0.1), S * 0.4); ctx.stroke(); }
+    }
+    // barba
+    ctx.fillStyle = C.beard;
+    const full = C.beardStyle === 'full';
+    ctx.beginPath();
+    ctx.moveTo(S * 0.3, S * 0.5); ctx.quadraticCurveTo(S * 0.3, S * (full ? 0.84 : 0.8), S * 0.5, S * (full ? 0.86 : 0.82)); ctx.quadraticCurveTo(S * 0.7, S * (full ? 0.84 : 0.8), S * 0.7, S * 0.5);
+    ctx.lineTo(S * 0.66, S * 0.5); ctx.quadraticCurveTo(S * 0.5, S * (full ? 0.66 : 0.68), S * 0.34, S * 0.5); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(S * 0.42, S * 0.6); ctx.quadraticCurveTo(S * 0.5, S * 0.56, S * 0.58, S * 0.6); ctx.quadraticCurveTo(S * 0.5, S * 0.64, S * 0.42, S * 0.6); ctx.fill(); // bigote
+    // cejas
+    const browY = S * 0.43; ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.025; ctx.lineCap = 'round';
+    let bUp = 0, bAng = C.brow === 'straight' ? 0.1 : 0;
+    if (face === 'hit' || face === 'tired' || face === 'ko') bUp = -S * 0.03; if (face === 'angry') bAng = 0.3; if (face === 'happy') bUp = -S * 0.015;
+    ctx.beginPath(); ctx.moveTo(S * 0.36, browY + bUp - bAng * S * 0.04); ctx.lineTo(S * 0.46, browY + bUp + bAng * S * 0.03); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(S * 0.54, browY + bUp + bAng * S * 0.03); ctx.lineTo(S * 0.64, browY + bUp - bAng * S * 0.04); ctx.stroke();
+    // ojos
+    for (const ex of [S * 0.42, S * 0.58]) {
+      const ey = S * 0.49, er = S * 0.035;
+      if (face === 'ko') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(ex - er, ey - er); ctx.lineTo(ex + er, ey + er); ctx.moveTo(ex + er, ey - er); ctx.lineTo(ex - er, ey + er); ctx.stroke(); continue; }
+      if (face === 'hit' || face === 'happy') { ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.012; ctx.beginPath(); ctx.moveTo(ex - er, ey + er * 0.3); ctx.quadraticCurveTo(ex, ey - er * (face === 'happy' ? 1 : 0.6), ex + er, ey + er * 0.3); ctx.stroke(); continue; }
+      const open = face === 'tired' ? 0.5 : face === 'angry' ? 0.75 : 1;
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = '#1a100a'; ctx.lineWidth = S * 0.006; ctx.beginPath(); ctx.ellipse(ex, ey, er, er * 0.8 * open, 0, 0, TAU); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3b2412'; ell(ctx, ex, ey, er * 0.5, er * 0.5 * open); ctx.fill(); ctx.fillStyle = '#000'; ell(ctx, ex, ey, er * 0.25, er * 0.25 * open); ctx.fill();
+      ctx.fillStyle = '#fff'; ell(ctx, ex + er * 0.15, ey - er * 0.2, er * 0.1, er * 0.1); ctx.fill();
+    }
+    // nariz y boca
+    ctx.strokeStyle = 'rgba(90,45,25,0.6)'; ctx.lineWidth = S * 0.008; ctx.beginPath(); ctx.moveTo(S * 0.5, S * 0.5); ctx.lineTo(S * 0.485, S * 0.575); ctx.quadraticCurveTo(S * 0.5, S * 0.59, S * 0.515, S * 0.575); ctx.stroke();
+    const mo = face === 'hit' ? 1 : face === 'ko' ? 0.7 : face === 'tired' ? 0.5 : 0;
+    ctx.fillStyle = '#4a1a1a'; ctx.strokeStyle = '#2a0f0a'; ctx.lineWidth = S * 0.006;
+    if (face === 'happy') { ctx.beginPath(); ctx.moveTo(S * 0.42, S * 0.64); ctx.quadraticCurveTo(S * 0.5, S * 0.72, S * 0.58, S * 0.64); ctx.quadraticCurveTo(S * 0.5, S * 0.69, S * 0.42, S * 0.64); ctx.fill(); ctx.stroke(); }
+    else if (mo > 0) { ell(ctx, S * 0.5, S * 0.66, S * 0.05, S * 0.02 + mo * S * 0.035); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#fff'; ctx.fillRect(S * 0.46, S * 0.645, S * 0.08, S * 0.012); if (face === 'ko') { ctx.fillStyle = '#e07090'; ell(ctx, S * 0.5, S * 0.69, S * 0.02, S * 0.03); ctx.fill(); } }
+    else { ctx.beginPath(); ctx.moveTo(S * 0.44, S * 0.655); ctx.quadraticCurveTo(S * 0.5, S * (C.brow === 'arched' ? 0.68 : 0.66), S * 0.56, S * 0.655); ctx.stroke(); }
+    if (face === 'hit' || face === 'tired') { ctx.fillStyle = 'rgba(220,70,70,0.25)'; ell(ctx, S * 0.38, S * 0.56, S * 0.05, S * 0.03); ctx.fill(); ell(ctx, S * 0.62, S * 0.56, S * 0.05, S * 0.03); ctx.fill(); }
+  }
+
   // ----------------------------------------------------------- cinturones
   const BELTS = [
     { wins: 1, name: 'Cinturón Blanco', color: '#f1f1f1', trim: '#cfcfcf', text: 'Le has ganado a Oscar. Una vez. Nadie te creerá.' },
@@ -655,7 +719,7 @@
   }
 
   root.TSM_DRAW = {
-    W, H, FLOOR, CHARS, BELTS, CROWD,
+    W, H, FLOOR, CHARS, BELTS, CROWD, ik, pose, paintFaceTexture,
     background() { if (!bgCanvas) bgCanvas = makeBackground(); return bgCanvas; },
     drawForeground, drawSpectators, drawFighter, drawHead, drawPortrait, drawPoolScene, drawBelt, drawChair, rr, ell,
   };
