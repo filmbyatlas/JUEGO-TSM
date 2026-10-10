@@ -6,7 +6,9 @@ Está pensado para que ganar sea difícil pero entretenido: en simulaciones, sin
 
 ## Jugar
 
-Abre `index.html` en un navegador (móvil o escritorio). Todo va en un solo archivo; solo carga three.js desde un CDN para el 3D (si no hay WebGL, cae al render 2D).
+Abre `index.html` en un navegador (móvil o escritorio). Todo va en un solo archivo; solo carga three.js desde un CDN para el 3D.
+
+Al entrar, cada jugador pone su nombre. El progreso (victorias, derrotas, cinturones) se guarda en ese móvil o navegador por nombre, así que al volver otro día basta con poner el mismo nombre. Para llevar el progreso a otro móvil, en la pantalla de nombre hay un código ("Llevar mi progreso a otro móvil") que se copia y se importa en el otro aparato.
 
 Para publicarlo con un enlace: activa **GitHub Pages** en este repositorio (Settings → Pages → Branch `main`, carpeta `/`), y quedará en `https://filmbyatlas.github.io/JUEGO-TSM/`.
 
@@ -38,7 +40,9 @@ El movimiento es relativo a la pantalla: izquierda y derecha rodean al rival, ar
 - **Oscar vacila**: cada 15–25 s, si va ganando con claridad, baja los brazos para mirar al público. Es la mejor ventana.
 - **Piscina**: entre asaltos, una sola vez por pelea, Muslera mete la cabeza en la piscina: vida al máximo, aguante al máximo y 20 s de "fresquito" (más rápido, pega más).
 - **Caídas**: a la tercera caída se acaba. Para levantarte hay que machacar botones antes del 10. Si no hay KO, deciden los jueces, que son amigos de Oscar.
-- **Cinturones** por victorias acumuladas (se guardan en el navegador): 1 blanco, 3 amarillo, 5 naranja, 10 verde, 25 azul, 50 marrón y 100 el cinturón negro KLK.
+- **Aguante**: cada golpe gasta aguante y se recupera quieto, andando o, más despacio, con la guardia puesta. Con el aguante a tope los golpes pegan más fuerte; con el aguante bajo pegan flojo y lento.
+- **Cinturones** por victorias acumuladas (se guardan por nombre de jugador): 1 blanco, 3 amarillo, 5 naranja, 10 verde, 25 azul, 50 marrón y 100 el cinturón negro KLK.
+- **Sonido**: música propia (sintetizada, sin ficheros), efectos y público, y las frases con la voz del dispositivo. Botones arriba: pausa, pantalla completa, música, voces y silencio.
 
 ## Frases épicas
 
@@ -54,7 +58,7 @@ src/sim.js     motor de combate (lógica pura, sin render; se usa también en No
 src/anim.js    animación procedural: poses por estado, suavizado, muelles de reacción, ciclo de pasos
 src/draw3d.js  escenario 360° (carpa, público, seto, casa, árbol, piscina), luchadores con IK en 3D, cámara
 src/draw.js    versión 2D de respaldo, retratos, cinturones y texturas de cara (canvas procedural)
-src/audio.js   sonidos sintetizados con WebAudio
+src/audio.js   sonidos, público y música sintetizados con WebAudio (secuenciador propio)
 src/game.js    bucle, cámara, HUD, menús, entrada táctil y teclado, progreso
 src/page.html  maquetación y estilos
 build.js       genera index.html y dist/artifact.html

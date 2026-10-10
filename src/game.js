@@ -8,11 +8,42 @@
   const lerp = (a, b, t) => a + (b - a) * t;
   const $ = id => document.getElementById(id);
 
-  // ----------------------------------------------------------- progreso
-  const SAVE_KEY = 'tsm_progreso_v1';
-  const save = { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0, muted: false, voices: true };
-  function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); Object.assign(save, s); } catch (e) { } }
-  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } }
+  // ----------------------------------------------------------- progreso: perfiles por nombre + ajustes
+  const OLD_KEY = 'tsm_progreso_v1', PROF_KEY = 'tsm_perfiles_v1', SET_KEY = 'tsm_ajustes_v1';
+  const settings = { muted: false, voices: true, music: true };
+  const BLANK = () => ({ name: '', wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0 });
+  const profiles = { current: null, players: {} };
+  let save = BLANK();
+  const keyOf = name => name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '_').slice(0, 16);
+  function loadAll() {
+    try { Object.assign(settings, JSON.parse(localStorage.getItem(SET_KEY) || '{}')); } catch (e) { }
+    try { const p = JSON.parse(localStorage.getItem(PROF_KEY) || 'null'); if (p && p.players) { profiles.players = p.players; profiles.current = p.current; } } catch (e) { }
+    try {
+      const old = JSON.parse(localStorage.getItem(OLD_KEY) || 'null');
+      if (old && old.fights > 0 && !profiles.players.jugador_anterior) { const p = Object.assign(BLANK(), { name: 'Jugador anterior' }); for (const k of Object.keys(BLANK())) if (k !== 'name' && typeof old[k] === 'number') p[k] = old[k]; profiles.players.jugador_anterior = p; if (old.muted != null) settings.muted = !!old.muted; if (old.voices != null) settings.voices = !!old.voices; localStorage.removeItem(OLD_KEY); persistProfiles(); }
+    } catch (e) { }
+    if (profiles.current && profiles.players[profiles.current]) save = profiles.players[profiles.current]; else { profiles.current = null; save = BLANK(); }
+  }
+  function persistProfiles() { try { localStorage.setItem(PROF_KEY, JSON.stringify(profiles)); } catch (e) { } }
+  function persistSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) { } }
+  function persist() { if (profiles.current) profiles.players[profiles.current] = save; persistProfiles(); }
+  function selectProfile(name) {
+    const k = keyOf(name); if (!k) return false;
+    if (!profiles.players[k]) profiles.players[k] = Object.assign(BLANK(), { name: name.trim().slice(0, 16) });
+    profiles.current = k; save = profiles.players[k]; persistProfiles(); return true;
+  }
+  function hasProfile() { return !!profiles.current; }
+  // código para llevar el progreso a otro móvil
+  function checksum(s) { let h = 7; for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return (h % 46656).toString(36).padStart(3, '0'); }
+  function profileCode(p) {
+    const arr = [p.name, p.wins, p.losses, p.fights, p.streak, p.bestStreak, p.kos, p.pool, p.fastest, p.decisions, p.knockedDown];
+    const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(arr)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return 'TSM1.' + b64 + '.' + checksum(b64);
+  }
+  function parseCode(code) {
+    const m = /^TSM1\.([A-Za-z0-9_-]+)\.([a-z0-9]{3})$/.exec((code || '').trim()); if (!m || checksum(m[1]) !== m[2]) return null;
+    try { const a = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/'))))); if (!Array.isArray(a) || typeof a[0] !== 'string' || !a[0].trim()) return null; const p = BLANK(); [p.name, p.wins, p.losses, p.fights, p.streak, p.bestStreak, p.kos, p.pool, p.fastest, p.decisions, p.knockedDown] = a; for (const k of Object.keys(p)) if (k !== 'name') p[k] = Math.max(0, Math.floor(+p[k] || 0)); p.name = p.name.trim().slice(0, 16); return p; } catch (e) { return null; }
+  }
   function currentBelt() { let b = null; for (const belt of D.BELTS) if (save.wins >= belt.wins) b = belt; return b; }
   function nextBelt() { for (const belt of D.BELTS) if (save.wins < belt.wins) return belt; return null; }
   function beltCount() { return D.BELTS.filter(b => save.wins >= b.wins).length; }
@@ -62,16 +93,25 @@
     G.bubbles.push({ who, text, t: 0, life: Math.max(2.6, 1.2 + text.length * 0.055) });
     speak(who, text);
   }
+  // elige las mejores voces en español que tenga el dispositivo (las "Natural", "Google" o "Premium" suenan menos robóticas)
+  function pickVoice(who) {
+    const vs = speechSynthesis.getVoices(); if (!vs.length) return null;
+    const score = v => { const n = (v.name || '').toLowerCase(), l = (v.lang || '').toLowerCase().replace('_', '-'); if (!l.startsWith('es')) return -1; let s = 10; if (l === 'es-es') s += 3; if (/natural|neural|premium|enhanced|wavenet|online/.test(n)) s += 6; if (n.includes('google')) s += 4; if (!v.localService) s += 1; if (/jorge|diego|pablo|enrique|carlos|alvaro|álvaro|male|hombre/.test(n)) s += 2; return s; };
+    const sorted = vs.map(v => [score(v), v]).filter(x => x[0] >= 0).sort((a, b) => b[0] - a[0]).map(x => x[1]);
+    if (!sorted.length) return null;
+    return who === 'muslera' ? sorted[0] : (sorted[1] || sorted[0]);
+  }
+  if ('speechSynthesis' in window) { try { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } catch (e) { } }
   function speak(who, text) {
-    if (!save.voices || !('speechSynthesis' in window)) return;
+    if (!settings.voices || settings.muted || !('speechSynthesis' in window)) return;
     try {
       const u = new SpeechSynthesisUtterance(text.replace(/¡|!|¿/g, '').replace('llameg', 'yamej').replace('tapel', 'tapél'));
-      u.lang = 'es-ES'; u.rate = who === 'muslera' ? 1.0 : 1.12; u.pitch = who === 'muslera' ? 0.65 : 1.15; u.volume = save.muted ? 0 : 1;
-      const es = speechSynthesis.getVoices().filter(v => /^es/i.test(v.lang));
-      if (es.length) u.voice = es[who === 'muslera' ? 0 : Math.min(1, es.length - 1)];
+      u.lang = 'es-ES'; u.rate = who === 'muslera' ? 0.98 : 1.06; u.pitch = who === 'muslera' ? 0.82 : 1.0; u.volume = 1;
+      const v = pickVoice(who); if (v) u.voice = v;
       speechSynthesis.cancel(); speechSynthesis.speak(u);
     } catch (e) { }
   }
+  function musicMode() { if (G.sim && G.sim.phase === 'break') return 'over'; return G.screen === 'fight' ? 'fight' : G.screen === 'pool' ? 'pool' : G.screen === 'intro' ? 'intro' : (G.screen === 'over' || G.screen === 'corner') ? 'over' : 'menu'; }
   function cancelSpeech() { if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch (e) { } }
 
   const LINES = {
@@ -92,16 +132,17 @@
 
   // ----------------------------------------------------------- arranque
   function boot() {
-    loadSave();
+    loadAll();
     G.canvas = $('game'); G.ctx = G.canvas.getContext('2d');
     G.touch = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
     document.body.classList.toggle('touch', G.touch);
     G.use3d = !!(R3 && R3.init($('game3d'), { mobile: G.touch }));
-    AU.muted = !!save.muted; updateMuteBtn();
-    bindInput(); bindUI();
+    AU.muted = !!settings.muted; AU.music.enabled = !!settings.music; updateMuteBtn();
+    bindInput(); bindUI(); paintButtons();
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(paintButtons);
     resize(); window.addEventListener('resize', resize);
     if (!G.use3d) { showScreen('nogl'); return; }
-    showScreen('title'); refreshTitle();
+    if (hasProfile()) { showScreen('title'); refreshTitle(); } else showWho();
     requestAnimationFrame(loop);
   }
   function resize() {
@@ -113,6 +154,7 @@
     G.canvas.width = Math.round(G.cw * G.dpr); G.canvas.height = Math.round(G.ch * G.dpr);
     G.canvas.style.width = G.cw + 'px'; G.canvas.style.height = G.ch + 'px';
     if (G.use3d) { const c3 = $('game3d'); c3.style.width = G.cw + 'px'; c3.style.height = G.ch + 'px'; R3.resize(G.cw, G.ch); }
+    if ($('controls').classList.contains('active')) { clearTimeout(G.paintT); G.paintT = setTimeout(paintButtons, 120); }
   }
   function showScreen(name) {
     for (const el of document.querySelectorAll('.overlay')) el.hidden = el.id !== 'ov-' + name;
@@ -120,7 +162,7 @@
   }
   function setControls(on) {
     $('controls').classList.toggle('active', on); document.body.classList.toggle('playing', on && G.touch);
-    requestAnimationFrame(resize);
+    requestAnimationFrame(() => { resize(); if (on) requestAnimationFrame(paintButtons); });
   }
 
   // ----------------------------------------------------------- entrada
@@ -157,6 +199,9 @@
     const endJoy = e => { if (e.pointerId !== jid) return; jid = null; base.classList.remove('on'); G.input.joy.x = G.input.joy.y = 0; G.input.joy.active = false; knob.style.transform = ''; };
     zone.addEventListener('pointerup', endJoy); zone.addEventListener('pointercancel', endJoy);
     $('arena').addEventListener('pointerdown', () => { AU.init(); if (G.screen === 'intro') skipIntro(); });
+    // cualquier toque, clic o tecla desbloquea el audio en el móvil y arranca la música
+    const unlock = () => { AU.unlock(); if (AU.ready) AU.startMusic(musicMode()); };
+    for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, unlock, { passive: true });
   }
   // convierte la entrada (relativa a la pantalla) en acercarse/lateral respecto al rival
   function readInput() {
@@ -173,6 +218,45 @@
     return inp;
   }
 
+  // ----------------------------------------------------------- botones táctiles como imágenes (sin texto seleccionable)
+  function paintButtons() {
+    const glove = (ctx, x, y, r, color) => { ctx.fillStyle = color; ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.lineWidth = r * 0.16; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.9, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.beginPath(); ctx.ellipse(x - r * 0.35, y + r * 0.55, r * 0.42, r * 0.32, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); ctx.fillStyle = '#222'; ctx.fillRect(x - r * 1.35, y - r * 0.45, r * 0.5, r * 0.9); };
+    const arrow = (ctx, x0, y0, x1, y1, w) => { ctx.strokeStyle = '#fff'; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); const a = Math.atan2(y1 - y0, x1 - x0); ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - Math.cos(a - 0.5) * w * 2.2, y1 - Math.sin(a - 0.5) * w * 2.2); ctx.moveTo(x1, y1); ctx.lineTo(x1 - Math.cos(a + 0.5) * w * 2.2, y1 - Math.sin(a + 0.5) * w * 2.2); ctx.stroke(); };
+    const icons = {
+      jab: (ctx, W, H) => { glove(ctx, W * 0.5, H * 0.36, W * 0.13, '#f6cfe0'); arrow(ctx, W * 0.66, H * 0.36, W * 0.9, H * 0.36, W * 0.04); },
+      cross: (ctx, W, H) => { glove(ctx, W * 0.46, H * 0.38, W * 0.13, '#f6cfe0'); ctx.strokeStyle = '#fff'; ctx.lineWidth = W * 0.04; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(W * 0.2, H * 0.55); ctx.quadraticCurveTo(W * 0.5, H * 0.1, W * 0.86, H * 0.34); ctx.stroke(); arrow(ctx, W * 0.78, H * 0.29, W * 0.9, H * 0.36, W * 0.04); },
+      upper: (ctx, W, H) => { glove(ctx, W * 0.5, H * 0.42, W * 0.13, '#f6cfe0'); arrow(ctx, W * 0.5, H * 0.62, W * 0.5, H * 0.12, W * 0.045); },
+      jump: (ctx, W, H) => { arrow(ctx, W * 0.5, H * 0.6, W * 0.5, H * 0.14, W * 0.06); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = W * 0.04; ctx.beginPath(); ctx.moveTo(W * 0.28, H * 0.66); ctx.lineTo(W * 0.72, H * 0.66); ctx.stroke(); },
+      crouch: (ctx, W, H) => { arrow(ctx, W * 0.5, H * 0.14, W * 0.5, H * 0.56, W * 0.06); ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = W * 0.04; ctx.beginPath(); ctx.moveTo(W * 0.28, H * 0.66); ctx.lineTo(W * 0.72, H * 0.66); ctx.stroke(); },
+      dodge: (ctx, W, H) => { arrow(ctx, W * 0.52, H * 0.4, W * 0.18, H * 0.4, W * 0.05); arrow(ctx, W * 0.48, H * 0.4, W * 0.82, H * 0.4, W * 0.05); },
+      block: (ctx, W, H) => { ctx.fillStyle = '#fff'; ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = W * 0.03; ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.1); ctx.lineTo(W * 0.72, H * 0.2); ctx.quadraticCurveTo(W * 0.74, H * 0.55, W * 0.5, H * 0.68); ctx.quadraticCurveTo(W * 0.26, H * 0.55, W * 0.28, H * 0.2); ctx.closePath(); ctx.fill(); ctx.stroke(); },
+    };
+    for (const b of document.querySelectorAll('#controls .ctl')) {
+      const label = b.dataset.label || b.textContent.trim(), sub = b.dataset.sub || '', a = b.dataset.a;
+      b.dataset.label = label; b.dataset.sub = sub; b.textContent = ''; b.setAttribute('aria-label', label + (sub ? ' (' + sub + ')' : ''));
+      const r = b.getBoundingClientRect(); if (!r.width || !r.height) continue;
+      const W = Math.round(r.width), H = Math.round(r.height), S = 3;
+      if (b.dataset.painted === W + 'x' + H) continue; b.dataset.painted = W + 'x' + H;
+      const c = document.createElement('canvas'); c.width = W * S; c.height = H * S; const ctx = c.getContext('2d'); ctx.scale(S, S);
+      const wide = W > H * 1.6, short = H < 52, withIcon = !wide && !short && !!icons[a];
+      if (withIcon) { ctx.save(); ctx.translate(W * 0.5 - H * 0.5, 0); ctx.scale(H / W, 1); icons[a](ctx, W, H * 0.9); ctx.restore(); }
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
+      const fs = wide ? 17 : short ? 13 : (label.length > 5 ? 13 : 16);
+      ctx.font = `${fs}px "Anton", Impact, "Arial Black", sans-serif`;
+      if (wide) {
+        // botón ancho: icono a la izquierda, texto grande y subtítulo pequeño a la derecha
+        if (icons[a]) { ctx.save(); ctx.translate(H * 0.1, H * 0.05); ctx.scale(H * 0.9 / W, 0.9); icons[a](ctx, W, H); ctx.restore(); }
+        ctx.textAlign = 'left'; ctx.fillText(label, H * 1.05, H * 0.5); const lw = ctx.measureText(label).width;
+        if (sub) { ctx.font = `700 11px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.75)'; const sw = ctx.measureText(sub.toUpperCase()).width; if (H * 1.05 + lw + 10 + sw <= W - 8) { ctx.textAlign = 'right'; ctx.fillText(sub.toUpperCase(), W - 10, H * 0.52); } }
+      } else {
+        const ty = withIcon ? H * 0.8 : (sub ? H * 0.42 : H * 0.5);
+        ctx.fillText(label, W / 2, ty);
+        if (sub && !withIcon) { ctx.font = `700 10px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(sub, W / 2, H * 0.66); }
+      }
+      b.style.backgroundImage = `url(${c.toDataURL()})`; b.style.backgroundSize = '100% 100%'; b.style.backgroundRepeat = 'no-repeat'; b.style.backgroundPosition = 'center';
+    }
+  }
+
   // ----------------------------------------------------------- UI
   function bindUI() {
     $('btn-fight').onclick = () => { AU.init(); AU.uiClick(); if (G.touch) goFullscreen(); startFight(); };
@@ -182,18 +266,43 @@
     $('btn-rest').onclick = () => { AU.uiClick(); chooseBreak('rest'); };
     $('btn-pool').onclick = () => { AU.uiClick(); chooseBreak('pool'); };
     $('btn-again').onclick = () => { AU.uiClick(); if (G.touch) goFullscreen(); startFight(); };
-    $('btn-menu').onclick = () => { AU.uiClick(); G.screen = 'title'; showScreen('title'); refreshTitle(); };
-    $('btn-mute').onclick = () => { AU.init(); save.muted = !save.muted; AU.setMuted(save.muted); persist(); updateMuteBtn(); };
-    $('btn-voice').onclick = () => { save.voices = !save.voices; persist(); updateMuteBtn(); if (save.voices) speak('oscar', 'Soy Dios.'); else cancelSpeech(); };
+    $('btn-menu').onclick = () => { AU.uiClick(); G.screen = 'title'; showScreen('title'); refreshTitle(); AU.setMusicMode('menu'); };
+    $('btn-mute').onclick = () => { AU.init(); settings.muted = !settings.muted; AU.setMuted(settings.muted); persistSettings(); updateMuteBtn(); if (settings.muted) cancelSpeech(); };
+    $('btn-voice').onclick = () => { settings.voices = !settings.voices; persistSettings(); updateMuteBtn(); if (settings.voices) speak('oscar', 'Soy Dios.'); else cancelSpeech(); };
+    $('btn-music').onclick = () => { AU.init(); settings.music = !settings.music; AU.setMusicEnabled(settings.music); persistSettings(); updateMuteBtn(); };
     $('btn-full').onclick = () => goFullscreen();
     $('btn-resume').onclick = () => togglePause();
-    $('btn-quit').onclick = () => { G.paused = false; cancelSpeech(); G.screen = 'title'; showScreen('title'); refreshTitle(); };
+    $('btn-quit').onclick = () => { G.paused = false; cancelSpeech(); G.screen = 'title'; showScreen('title'); refreshTitle(); AU.setMusicMode('menu'); };
+    // perfiles
+    $('btn-who').onclick = () => { AU.uiClick(); showWho(); };
+    $('btn-who-enter').onclick = () => { const n = $('who-name').value; if (!n.trim()) { $('who-name').focus(); return; } AU.uiClick(); selectProfile(n); $('who-name').value = ''; G.screen = 'title'; showScreen('title'); refreshTitle(); };
+    $('who-name').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $('btn-who-enter').click(); } e.stopPropagation(); });
+    $('who-code').addEventListener('keydown', e => e.stopPropagation());
+    $('btn-code-import').onclick = () => { const p = parseCode($('who-code').value); if (!p) { $('who-msg').textContent = 'Ese código no es válido. Tiene que empezar por TSM1.'; return; } const k = keyOf(p.name); profiles.players[k] = p; profiles.current = k; save = p; persistProfiles(); $('who-code').value = ''; renderWho(); $('who-msg').textContent = `Progreso de ${p.name} importado: ${p.wins} ${p.wins === 1 ? 'victoria' : 'victorias'}. Pulsa VOLVER para jugar.`; };
+    $('btn-code-copy').onclick = () => { if (!hasProfile()) return; const code = profileCode(save); $('who-code').value = code; $('who-code').select(); const done = () => { $('who-msg').textContent = 'Código copiado. Pégalo en el otro móvil con "Importar".'; }; if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done, () => { $('who-msg').textContent = 'Copia el código del cuadro y pégalo en el otro móvil.'; }); else $('who-msg').textContent = 'Copia el código del cuadro y pégalo en el otro móvil.'; };
+    $('btn-who-back').onclick = () => { AU.uiClick(); G.screen = 'title'; showScreen('title'); refreshTitle(); };
     $('btn-pause').onclick = () => togglePause();
     $('btn-reset').onclick = () => { if ($('btn-reset').dataset.armed) { Object.assign(save, { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0 }); persist(); renderBelts(); $('btn-reset').textContent = 'Progreso borrado'; delete $('btn-reset').dataset.armed; } else { $('btn-reset').dataset.armed = '1'; $('btn-reset').textContent = '¿Seguro? Pulsa otra vez'; } };
   }
   function updateMuteBtn() {
-    $('btn-mute').textContent = save.muted ? '🔇' : '🔊'; $('btn-mute').setAttribute('aria-label', save.muted ? 'Activar sonido' : 'Silenciar');
-    $('btn-voice').textContent = save.voices ? '🗣️' : '🤐'; $('btn-voice').setAttribute('aria-label', save.voices ? 'Quitar voces' : 'Poner voces'); $('btn-voice').classList.toggle('off', !save.voices);
+    $('btn-mute').textContent = settings.muted ? '🔇' : '🔊'; $('btn-mute').setAttribute('aria-label', settings.muted ? 'Activar sonido' : 'Silenciar');
+    $('btn-voice').textContent = settings.voices ? '🗣️' : '🤐'; $('btn-voice').setAttribute('aria-label', settings.voices ? 'Quitar voces' : 'Poner voces'); $('btn-voice').classList.toggle('off', !settings.voices);
+    $('btn-music').textContent = '🎵'; $('btn-music').setAttribute('aria-label', settings.music ? 'Quitar música' : 'Poner música'); $('btn-music').classList.toggle('off', !settings.music);
+  }
+  function showWho() { G.screen = 'title'; renderWho(); showScreen('who'); setTimeout(() => { try { $('who-name').focus(); } catch (e) { } }, 50); }
+  function renderWho() {
+    const list = $('who-list'); list.innerHTML = '';
+    const keys = Object.keys(profiles.players).sort((a, b) => profiles.players[b].wins - profiles.players[a].wins);
+    for (const k of keys) {
+      const p = profiles.players[k]; const b = document.createElement('button'); b.type = 'button'; b.className = 'who-chip' + (k === profiles.current ? ' on' : '');
+      let belt = null; for (const bl of D.BELTS) if (p.wins >= bl.wins) belt = bl;
+      b.innerHTML = `<b>${p.name.replace(/</g, '&lt;')}</b><span>${p.wins} ${p.wins === 1 ? 'victoria' : 'victorias'} · ${belt ? belt.name.replace('Cinturón ', 'cinturón ') : 'sin cinturón'}</span>`;
+      b.onclick = () => { AU.uiClick(); selectProfile(p.name); G.screen = 'title'; showScreen('title'); refreshTitle(); };
+      list.appendChild(b);
+    }
+    $('who-existing').hidden = keys.length === 0;
+    $('btn-who-back').hidden = !hasProfile(); $('btn-code-copy').hidden = !hasProfile();
+    $('who-msg').textContent = '';
   }
   function goFullscreen() {
     const el = document.documentElement; const req = el.requestFullscreen || el.webkitRequestFullscreen;
@@ -206,6 +315,7 @@
   }
   function refreshTitle() {
     const belt = currentBelt(), next = nextBelt();
+    $('title-player').textContent = save.name || 'sin nombre';
     $('title-record').textContent = `${save.wins} ${save.wins === 1 ? 'victoria' : 'victorias'} · ${save.losses} ${save.losses === 1 ? 'derrota' : 'derrotas'}`;
     $('title-belt').textContent = belt ? belt.name : 'Sin cinturón';
     const dif = Math.round(difficulty() * 100);
@@ -231,11 +341,12 @@
 
   // ----------------------------------------------------------- flujo de combate
   function startFight() {
+    if (!hasProfile()) { showWho(); return; }
     G.sim = new S.Sim({ difficulty: difficulty() });
-    G.sim.p.x = 0.6; G.sim.p.z = 0.4; G.sim.o.x = 9.2; G.sim.o.z = 0.4; G.sim.face();
+    G.sim.p.x = 3.6; G.sim.p.z = 3.75; G.sim.o.x = 8.75; G.sim.o.z = -0.8; G.sim.face();
     G.screen = 'intro'; G.intro = { t: 0, step: 0 }; G.paused = false; $('ov-pause').hidden = true;
     G.fx.parts.length = 0; G.fx.texts.length = 0; G.bubbles.length = 0; G.crowd.excite = 0.3; G.crowd.cheer = 0;
-    G.cam.override = null; G.cam.zoom = 1;
+    G.cam.override = null; G.cam.zoom = 1; G.cam.snap = true;
     showScreen('none'); setControls(G.touch);
     AU.init(); AU.crowd(0.25); AU.intro();
     say('Casa rural. Noche. Dos amigos, dos pares de guantes y ninguna idea buena.', '');
@@ -243,7 +354,7 @@
   function skipIntro() { if (G.screen === 'intro' && G.intro.t > 0.5) { G.intro.t = 99; G.bubbles.length = 0; cancelSpeech(); } }
   function beginRound1() {
     G.screen = 'fight'; G.sim.beginRound(); G.sim.p.face = 'normal'; G.sim.o.face = 'normal';
-    G.roundCard = { text: 'ASALTO 1', t: 0 }; AU.crowd(0.3); G.cam.override = null; G.cam.zoom = 1; G.nextIdleQuote = G.t + 14;
+    G.roundCard = { text: 'ASALTO 1', t: 0 }; AU.crowd(0.3); AU.setMusicMode('fight'); G.cam.override = null; G.cam.zoom = 1; G.nextIdleQuote = G.t + 14;
     say(pick(LINES.roundStart[1]), '');
   }
   function chooseBreak(choice) {
@@ -251,7 +362,7 @@
     showScreen('none');
     if (choice === 'pool' && !sim.poolUsed) {
       sim.applyBreakChoice('pool'); save.pool++; persist();
-      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 6.2) }; AU.crowd(0.15);
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 6.2) }; AU.crowd(0.15); AU.setMusicMode('pool'); G.cam.snap = true;
       say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
     } else {
       sim.applyBreakChoice('rest');
@@ -260,7 +371,7 @@
   }
   function startNextRound() {
     const sim = G.sim; sim.nextRound();
-    G.screen = 'fight'; G.roundCard = { text: 'ASALTO ' + sim.round, t: 0 }; G.cam.override = null; G.cam.zoom = 1;
+    G.screen = 'fight'; G.roundCard = { text: 'ASALTO ' + sim.round, t: 0 }; G.cam.override = null; G.cam.zoom = 1; AU.setMusicMode('fight');
     say(pick(LINES.roundStart[sim.round] || LINES.roundStart[3]), '');
     if (G.pool.healed) { G.pool.healed = false; setTimeout(() => { const h = sim.p.headPos(); addText('¡VIDA AL MÁXIMO!', h.x, h.y + 0.6, h.z, { size: 34, color: '#8dffb0', stroke: '#0a3a1a', life: 1.6, vy: 0.3 }); }, 600); setTimeout(() => quote('muslera', 'gordo', { force: true }), 2600); }
     G.nextIdleQuote = G.t + 12;
@@ -273,7 +384,7 @@
     $('break-judges').textContent = sc.p > sc.o ? '¡Muslera gana el asalto! Los jueces no se lo creen.' : sc.p === sc.o ? 'Asalto igualado. Y los jueces son amigos de Oscar.' : 'Asalto para Oscar. Los jueces lo tenían claro antes de empezar.';
     $('break-state').textContent = `Muslera: ${Math.round(sim.p.hp)}% de vida · ${Math.round(sim.p.stamina)}% de aguante`;
     $('btn-pool').disabled = sim.poolUsed; $('btn-pool').querySelector('small').textContent = sim.poolUsed ? 'Ya la has usado. Solo una vez por pelea.' : 'VIDA AL MÁXIMO · aguante al máximo · 20 s fresquito';
-    showScreen('break');
+    AU.setMusicMode('over'); showScreen('break');
   }
   function endFight(res) {
     G.screen = 'over'; G.results = res;
@@ -281,7 +392,7 @@
     if (res.winner === 'player') { save.wins++; save.streak++; save.bestStreak = Math.max(save.bestStreak, save.streak); if (res.method !== 'decision') save.kos++; else save.decisions++; const secs = (res.round - 1) * 60 + res.time; if (!save.fastest || secs < save.fastest) save.fastest = secs; }
     else { save.losses++; save.streak = 0; }
     save.knockedDown += res.kd.p; persist();
-    AU.crowd(res.winner === 'player' ? 0.7 : 0.35);
+    AU.crowd(res.winner === 'player' ? 0.7 : 0.35); AU.setMusicMode('over');
     setTimeout(() => quote(res.winner === 'player' ? 'muslera' : 'oscar', res.winner === 'player' ? pick(['anal', 'frances']) : pick(['dios', 'trump']), { force: true }), 2000);
     if (res.winner === 'player') { AU.win(); G.crowd.cheer = 1; const w = G.sim.p; for (let i = 0; i < 6; i++) setTimeout(() => burst(w.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 1.5, w.z + (Math.random() - 0.5) * 2, 40, { color: pick(['#f2d33b', '#ec93c0', '#56cfcb', '#fff', '#f08a2a']), speed: 3, g: 3 }), i * 350); }
     else AU.lose();
@@ -308,7 +419,7 @@
     const justUnlocked = won && D.BELTS.find(b => b.wins === save.wins);
     $('res-belt').hidden = !justUnlocked;
     if (justUnlocked) { const c = $('res-beltcv'); const ctx = c.getContext('2d'); c.width = 260 * 2; c.height = 70 * 2; ctx.scale(2, 2); D.drawBelt(ctx, 130, 35, 240, justUnlocked, false); $('res-beltname').textContent = `¡Nuevo cinturón! ${justUnlocked.name}`; $('res-belttext').textContent = justUnlocked.text; }
-    $('res-progress').textContent = won ? `Victorias totales: ${save.wins}. ${next ? `Siguiente cinturón: ${next.name} (${next.wins - save.wins} más).` : ''}` : `Derrotas: ${save.losses}. Victorias: ${save.wins}. ${next ? `Para el ${next.name} te faltan ${next.wins - save.wins}.` : ''} Todos somos Muslera.`;
+    $('res-progress').textContent = won ? `Victorias de ${save.name}: ${save.wins}. ${next ? `Siguiente cinturón: ${next.name} (${next.wins - save.wins} más).` : ''}` : `${save.name}: ${save.wins} ${save.wins === 1 ? 'victoria' : 'victorias'} y ${save.losses} ${save.losses === 1 ? 'derrota' : 'derrotas'}. ${next ? `Para el ${next.name} te faltan ${next.wins - save.wins}.` : ''} Todos somos Muslera.`;
     $('res-quote').textContent = won ? pick(['Oscar pide la revancha. Y un abogado.', 'El grupo KLK no da crédito.', 'Alguien lo ha grabado. Esta vez sí.', 'Muslera ha ganado con las manos abajo. Lección para todos.']) : pick(['Muslera sigue sin subir las manos. Y sigue sin ganar.', 'Oscar ni ha sudado. Bueno, un poco.', 'La piscina está ahí para algo, Muslera.', 'Oscar: "¿Otra?" Muslera: "Dame un minuto."', 'El perro del público también lo vio venir.']);
     showScreen('over');
   }
@@ -417,19 +528,27 @@
   function updateIntro(dt) {
     const sim = G.sim, I = G.intro; I.t += dt;
     const o = sim.o, p = sim.p;
-    const walk = (f, from, to, t0, t1) => { const k = clamp((I.t - t0) / (t1 - t0), 0, 1); f.x = lerp(from, to, k); f.z = 0.4; const moving = k > 0 && k < 1; f.state = moving ? 'walk' : 'idle'; f.moveA = moving ? 1 : 0; f.speed = moving ? 1.3 : 0; f.t = I.t; f.face = 'normal'; };
-    walk(o, 9.2, 6.0, 0.4, 2.9); walk(p, 0.6, 3.6, 3.4, 5.9);
-    sim.face();
+    const walk = (f, from, to, t0, t1) => {
+      const k = clamp((I.t - t0) / (t1 - t0), 0, 1); f.x = lerp(from[0], to[0], k); f.z = lerp(from[1], to[1], k);
+      const moving = k > 0 && k < 1; f.state = moving ? 'walk' : 'idle'; f.moveA = moving ? 1 : 0; f.speed = moving ? 1.3 : 0; f.t = I.t; f.face = 'normal';
+      if (moving) { f.yaw = Math.atan2(-(to[1] - from[1]), to[0] - from[0]); f.fx = Math.cos(f.yaw); f.fz = -Math.sin(f.yaw); }
+      return moving;
+    };
+    // Oscar sale por la puerta de la casa; Muslera viene de la piscina con la toalla
+    const wo = walk(o, [8.75, -0.8], [6.0, 0.4], 0.4, 2.9), wp = walk(p, [3.6, 3.75], [3.6, 1.0], 3.4, 5.9);
+    if (!wo && !wp) sim.face();
     if (I.step === 0 && I.t > 0.6) { I.step = 1; G.crowd.cheer = 0.8; say('¡Entra OSCAR! Con medallas. Medallas de verdad. Esto empieza mal para Muslera.', 'oscar'); AU.crowdBurst(0.5); }
     if (I.step === 1 && I.t > 2.0) { I.step = 2; quote('oscar', 'btc', { force: true }); }
     if (I.step === 2 && I.t > 3.5) { I.step = 3; G.crowd.cheer = 0.5; say('Y aquí llega MUSLERA, con su toalla, sus guantes rosas y la guardia por los suelos.', 'muslera'); }
     if (I.step === 3 && I.t > 4.6) { I.step = 4; quote('muslera', 'frances', { force: true }); }
     if (I.step === 4 && I.t > 6.4) { I.step = 5; say('Tres asaltos de un minuto. Que gane el mejor. O sea, Oscar. Salvo que...', ''); }
     if (I.step === 5 && I.t > 7.3) { I.step = 6; quote('oscar', 'dios', { force: true }); }
-    if (I.t < 3.4) G.cam.override = { focus: { x: o.x - 0.2, y: 1.25, z: o.z }, yaw: Math.PI / 2 + 0.7, dist: 3.4, height: 0.25 };
-    else if (I.t < 6.4) G.cam.override = { focus: { x: p.x + 0.2, y: 1.25, z: p.z }, yaw: Math.PI / 2 - 0.7, dist: 3.4, height: 0.25 };
+    const shot = I.t < 3.4 ? 1 : I.t < 6.4 ? 2 : 3;
+    if (shot !== I.shot) { I.shot = shot; if (shot === 2) G.cam.snap = true; }
+    if (shot === 1) G.cam.override = { focus: { x: o.x + 0.45, y: 1.25, z: o.z + 0.65 }, yaw: Math.PI - 0.6, dist: 3.4, height: 0.25 };
+    else if (shot === 2) { const C = { x: 1.3, z: -0.3 }, fx = p.x + 0.3, fz = p.z - 0.3; G.cam.override = { focus: { x: fx, y: 1.1, z: fz }, yaw: Math.atan2(C.z - fz, C.x - fx), dist: Math.max(3.8, Math.hypot(C.x - fx, C.z - fz)), height: 0.4 }; }
     else G.cam.override = null;
-    if (I.t > 8.6) { p.x = 3.6; o.x = 6.0; p.moveA = o.moveA = 0; p.speed = o.speed = 0; beginRound1(); }
+    if (I.t > 8.6) { p.x = 3.6; p.z = 0.4; o.x = 6.0; o.z = 0.4; p.moveA = o.moveA = 0; p.speed = o.speed = 0; sim.face(); beginRound1(); }
   }
 
   function updatePool(dt) {
@@ -459,7 +578,8 @@
     ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
     ctx.clearRect(0, 0, cw, ch);
     const sim = G.sim;
-    R3.render({ sim, t: G.t, dt: G.lastDt, screen: G.screen, cheer: G.crowd.cheer, excite: G.crowd.excite, intro: G.screen === 'intro', shake: G.cam.shake, zoom: G.cam.zoom, cam: G.cam.override, poolPose: G.screen === 'pool' ? G.poolPose : null });
+    R3.render({ sim, t: G.t, dt: G.lastDt, screen: G.screen, cheer: G.crowd.cheer, excite: G.crowd.excite, intro: G.screen === 'intro', shake: G.cam.shake, zoom: G.cam.zoom, cam: G.cam.override, poolPose: G.screen === 'pool' ? G.poolPose : null, snap: G.cam.snap });
+    G.cam.snap = false;
     const s = R3.pxPerMeter() / 100;
     drawEffects(ctx, s);
     if (G.fx.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${G.fx.flash * 0.6})`; ctx.fillRect(0, 0, cw, ch); }
@@ -504,7 +624,7 @@
       ctx.font = font(20, '"Anton", Impact, sans-serif'); ctx.textBaseline = 'top'; ctx.lineWidth = 3 * u; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.fillStyle = '#fff';
       ctx.textAlign = 'left'; ctx.strokeText('MUSLERA', pad + 56 * u, top + barH + 14 * u); ctx.fillText('MUSLERA', pad + 56 * u, top + barH + 14 * u);
       ctx.textAlign = 'right'; ctx.strokeText('OSCAR', cw - pad - 56 * u, top + barH + 14 * u); ctx.fillText('OSCAR', cw - pad - 56 * u, top + barH + 14 * u);
-      ctx.font = font(12); ctx.fillStyle = '#ffd7d7'; ctx.textAlign = 'left'; ctx.fillText('EL PUEBLO · guardia baja', pad + 56 * u, top + barH + 36 * u); ctx.textAlign = 'right'; ctx.fillText('EL CAMPEÓN · guardia alta', cw - pad - 56 * u, top + barH + 36 * u);
+      ctx.font = font(12); ctx.fillStyle = '#ffd7d7'; ctx.textAlign = 'left'; ctx.fillText('EL PUEBLO · ' + (save.name ? save.name.toUpperCase() : 'guardia baja'), pad + 56 * u, top + barH + 36 * u); ctx.textAlign = 'right'; ctx.fillText('EL CAMPEÓN · guardia alta', cw - pad - 56 * u, top + barH + 36 * u);
       for (let i = 0; i < 3; i++) { ctx.fillStyle = i < sim.p.knockdowns ? '#ff5a5a' : 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(pad + 56 * u + barW - 10 * u - i * 14 * u, top + barH + 24 * u, 4 * u, 0, Math.PI * 2); ctx.fill(); ctx.fillStyle = i < sim.o.knockdowns ? '#ff5a5a' : 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(cw - pad - 56 * u - barW + 10 * u + i * 14 * u, top + barH + 24 * u, 4 * u, 0, Math.PI * 2); ctx.fill(); }
       const tm = Math.max(0, Math.ceil(sim.roundT)); const mm = Math.floor(tm / 60), ss = tm % 60;
       ctx.fillStyle = 'rgba(0,0,0,0.6)'; D.rr(ctx, cw / 2 - 48 * u, top - 4 * u, 96 * u, 50 * u, 8 * u); ctx.fill();
@@ -536,13 +656,13 @@
       const I = G.intro; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const card = (name, alias, record, k, x) => {
         const a = clamp(k, 0, 1); ctx.save(); ctx.globalAlpha = a; ctx.translate(x, ch * 0.22);
-        ctx.fillStyle = 'rgba(0,0,0,0.6)'; D.rr(ctx, -150 * u, -36 * u, 300 * u, 92 * u, 10 * u); ctx.fill();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)'; D.rr(ctx, -175 * u, -36 * u, 350 * u, 92 * u, 10 * u); ctx.fill();
         ctx.font = font(44, '"Anton", Impact, sans-serif'); ctx.fillStyle = '#fff'; ctx.fillText(name, 0, -8 * u);
         ctx.font = font(18); ctx.fillStyle = '#ffd7a0'; ctx.fillText(alias, 0, 24 * u); ctx.font = font(13); ctx.fillStyle = '#ccc'; ctx.fillText(record, 0, 42 * u);
         ctx.restore();
       };
-      if (I.t > 0.8 && I.t < 3.6) card('OSCAR', '"EL CAMPEÓN" · hace boxeo de verdad', 'Récord: todas ganadas · Medallas: 3 · Guardia: impecable', (I.t - 0.8) * 2, cw * 0.72);
-      if (I.t > 3.8 && I.t < 6.6) card('MUSLERA', '"EL PUEBLO" · no hace boxeo', `Récord: ${save.wins}-${save.losses} · Guardia: ¿qué guardia?`, (I.t - 3.8) * 2, cw * 0.28);
+      if (I.t > 0.8 && I.t < 3.4) card('OSCAR', '"EL CAMPEÓN" · hace boxeo de verdad', 'Récord: todas ganadas · Medallas: 3 · Guardia: impecable', (I.t - 0.8) * 2, cw * 0.76);
+      if (I.t > 3.8 && I.t < 6.6) card('MUSLERA', `"EL PUEBLO" · ${save.name ? 'hoy, ' + save.name : 'no hace boxeo'}`, `Récord: ${save.wins}-${save.losses} · Guardia: ¿qué guardia?`, (I.t - 3.8) * 2, cw * 0.25);
       if (I.t > 6.6) { ctx.save(); ctx.globalAlpha = clamp((I.t - 6.6) * 2, 0, 1); ctx.font = font(96, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = '#ffe36b'; ctx.strokeText('VS', cw / 2, ch * 0.38); ctx.fillText('VS', cw / 2, ch * 0.38); ctx.restore(); }
       ctx.font = font(13); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('toca para saltar', cw - pad, ch - pad - 30 * u);
     }
@@ -598,6 +718,7 @@
   }
 
   G.step = function (dt) { G.t += dt; G.lastDt = dt; update(dt); render(); };
+  G.paintButtons = paintButtons;
   document.addEventListener('DOMContentLoaded', boot);
   root.TSM_GAME = G;
 })(window);

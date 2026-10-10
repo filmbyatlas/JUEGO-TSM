@@ -16,6 +16,57 @@
       } catch (e) { this.ctx = null; }
     },
     setMuted(m) { this.muted = m; if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.9, this.ctx.currentTime, 0.05); },
+    // en el móvil el contexto nace suspendido: se desbloquea con cualquier toque o tecla
+    unlock() { this.init(); if (this.ctx && this.ctx.state === 'suspended') { try { this.ctx.resume(); } catch (e) { } } },
+    noise1() { if (!this._noise) this._noise = this.noiseBuffer(1); return this._noise; },
+    // ---------------------------------------------------------- música (secuenciador propio)
+    music: { on: false, mode: 'menu', timer: null, next: 0, step: 0, gain: null, filter: null, enabled: true },
+    MUS: {
+      bpm: 132,
+      lead: [69, 0, 72, 0, 76, 0, 81, 0, 79, 0, 76, 0, 72, 0, 0, 0, 67, 0, 71, 0, 74, 0, 79, 0, 76, 0, 74, 0, 72, 71, 69, 0, 69, 0, 72, 0, 76, 0, 81, 0, 83, 0, 81, 0, 79, 0, 76, 0, 77, 0, 76, 0, 74, 0, 72, 0, 71, 0, 72, 0, 74, 0, 76, 0],
+      bass: [45, 41, 43, 40, 45, 41, 38, 40], bassPat: [0, 0, 12, 0, 0, 7, 12, 0],
+      kick: [1, 0, 0, 0, 1, 0, 1, 0], snare: [0, 0, 1, 0, 0, 0, 1, 0], hat: [1, 1, 1, 1, 1, 1, 1, 1],
+    },
+    midi(n) { return 440 * Math.pow(2, (n - 69) / 12); },
+    startMusic(mode) {
+      if (!this.ready) return;
+      const m = this.music; if (mode) m.mode = mode;
+      if (!m.gain) { m.filter = this.ctx.createBiquadFilter(); m.filter.type = 'lowpass'; m.filter.frequency.value = 18000; m.gain = this.ctx.createGain(); m.gain.gain.value = 0; m.filter.connect(m.gain); m.gain.connect(this.master); }
+      this.setMusicMode(m.mode);
+      if (m.on) return;
+      m.on = true; m.next = this.ctx.currentTime + 0.1; m.step = 0;
+      m.timer = setInterval(() => this.musicTick(), 200);
+    },
+    stopMusic() { const m = this.music; if (!m.on) return; m.on = false; clearInterval(m.timer); if (m.gain) m.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); },
+    setMusicMode(mode) {
+      const m = this.music; m.mode = mode; if (!m.gain) return;
+      const lvl = !m.enabled ? 0 : mode === 'fight' ? 0.24 : mode === 'pool' ? 0.34 : mode === 'over' ? 0.36 : mode === 'intro' ? 0.4 : 0.5;
+      m.gain.gain.setTargetAtTime(lvl, this.ctx.currentTime, 0.4);
+      m.filter.frequency.setTargetAtTime(mode === 'pool' ? 420 : 18000, this.ctx.currentTime, 0.3);
+    },
+    setMusicEnabled(on) { this.music.enabled = on; this.setMusicMode(this.music.mode); },
+    musicTick() {
+      const m = this.music, c = this.ctx, M = this.MUS; const stepDur = 60 / M.bpm / 2;
+      if (m.next < c.currentTime - 0.5) m.next = c.currentTime + 0.05;   // tras una pausa larga, no intentar recuperar lo perdido
+      while (m.next < c.currentTime + 1.1) {
+        const s = m.step, t = m.next, out = m.filter, i8 = s % 8, bar = Math.floor(s / 8) % 8;
+        const ln = M.lead[s % M.lead.length]; if (ln) this.synthNote(this.midi(ln), t, stepDur * 0.85, 'square', 0.15, out, true);
+        this.synthNote(this.midi(M.bass[bar] + M.bassPat[i8]), t, stepDur * 0.9, 'triangle', 0.36, out);
+        if (M.kick[i8]) this.kick(t, out);
+        if (M.snare[i8]) this.snare(t, out);
+        if (M.hat[i8]) this.hat(t, out, i8 % 2 === 0 ? 0.07 : 0.04);
+        m.next += stepDur; m.step++;
+      }
+    },
+    synthNote(freq, t, dur, type, vol, out, thick) {
+      const c = this.ctx, g = c.createGain(); g.connect(out);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.012); g.gain.exponentialRampToValueAtTime(vol * 0.5, t + dur * 0.5); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      const o = c.createOscillator(); o.type = type; o.frequency.value = freq; o.connect(g); o.start(t); o.stop(t + dur + 0.02);
+      if (thick) { const o2 = c.createOscillator(); o2.type = 'sawtooth'; o2.frequency.value = freq * 1.004; const g2 = c.createGain(); g2.gain.value = 0.35; o2.connect(g2); g2.connect(g); o2.start(t); o2.stop(t + dur + 0.02); }
+    },
+    kick(t, out) { const c = this.ctx, o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.12); g.gain.setValueAtTime(0.7, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.2); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.22); },
+    snare(t, out) { const c = this.ctx, s = c.createBufferSource(); s.buffer = this.noise1(); const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 1800; const g = c.createGain(); g.gain.setValueAtTime(0.35, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14); s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t + 0.16); },
+    hat(t, out, vol) { const c = this.ctx, s = c.createBufferSource(); s.buffer = this.noise1(); const f = c.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; const g = c.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05); s.connect(f); f.connect(g); g.connect(out); s.start(t); s.stop(t + 0.06); },
     noiseBuffer(sec) {
       const sr = this.ctx.sampleRate, buf = this.ctx.createBuffer(1, Math.floor(sr * sec), sr), d = buf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;

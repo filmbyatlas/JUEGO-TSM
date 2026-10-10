@@ -4,11 +4,12 @@ const path = require('path');
 const OUT = '/tmp/claude-0/-home-user-JUEGO-TSM/5bd36043-0abc-52c3-84c0-56401295a617/scratchpad/shots';
 (async () => {
   const browser = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+  const enterWho = async (pg, name) => { try { if (!(await pg.$eval('#ov-who', el => el.hidden))) { await pg.fill('#who-name', name || 'Pepe'); await pg.click('#btn-who-enter'); await pg.waitForTimeout(300); } } catch (e) { } };
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   await page.route('**/three.min.js', r => r.fulfill({ path: OUT + '/../three.min.js', contentType: 'application/javascript' }));
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
   const errors = []; page.on('pageerror', e => errors.push('PAGEERROR ' + e.message));
-  await page.goto('file://' + path.resolve('index.html')); await page.waitForTimeout(800);
+  await page.goto('file://' + path.resolve('index.html')); await page.waitForTimeout(800); await enterWho(page);
   await page.click('#btn-fight'); await page.evaluate(() => { TSM_GAME.intro.t = 99; });
   await page.waitForFunction(() => TSM_GAME.screen === 'fight' && TSM_GAME.sim.phase === 'fight', null, { timeout: 60000 });
   await page.evaluate(() => { TSM_GAME.sim.roundT = 0.2; });

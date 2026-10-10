@@ -53,7 +53,7 @@
 
   // parámetros de la IA según dificultad (0 = sin cinturones, 1 = cinturón negro)
   const AI_EASY = { reactJab: 0.6, reactHeavy: 0.8, reactDelay: 0.12, aggression: 0.95, comboBreak: 0.85, tauntEvery: [12, 19], tauntDur: 1.0, preferDodge: 0.25, dmgScale: 0.6, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.5, duckPunish: 0.45, jumpRate: 0.025, strafeRate: 0.4, spamRead: 0.2 };
-  const AI_HARD = { reactJab: 0.63, reactHeavy: 0.82, reactDelay: 0.118, aggression: 0.95, comboBreak: 0.86, tauntEvery: [13, 21], tauntDur: 0.97, preferDodge: 0.27, dmgScale: 0.62, globalDmg: 0.7, followUp: 0.47, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.56, duckPunish: 0.5, jumpRate: 0.028, strafeRate: 0.42, spamRead: 0.22 };
+  const AI_HARD = { reactJab: 0.66, reactHeavy: 0.85, reactDelay: 0.115, aggression: 0.95, comboBreak: 0.87, tauntEvery: [13, 21], tauntDur: 0.95, preferDodge: 0.28, dmgScale: 0.66, globalDmg: 0.7, followUp: 0.5, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.6, duckPunish: 0.55, jumpRate: 0.03, strafeRate: 0.42, spamRead: 0.24 };
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -259,7 +259,7 @@
       const p = f.profile;
       if (f.state === 'idle' || f.state === 'crouch') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenIdle * dt * (f.fresh > 0 ? 1.5 : 1));
       else if (f.state === 'walk') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenWalk * dt);
-      else if (f.state === 'block') f.stamina = Math.max(0, f.stamina - 2 * dt);
+      else if (f.state === 'block') f.stamina = Math.min(f.maxStamina, f.stamina + p.regenIdle * 0.4 * dt);
       if (f.state === 'block') { f.blockT += dt; if (f.stamina <= 0) f.setState('idle'); }
       if (f.state === 'land') { f.landT -= dt; if (f.landT <= 0) f.setState('idle'); }
       if (f.move && !f.move.air) {
@@ -322,7 +322,7 @@
         return;
       }
       let dmg = m.dmg * this.ai.globalDmg * (att.key === 'oscar' ? this.ai.dmgScale : 1);
-      if (att.stamina < 20) dmg *= 0.75;
+      dmg *= 0.65 + 0.45 * clamp(att.stamina / att.maxStamina, 0, 1);   // con el aguante a tope pega más fuerte
       if (att.fresh > 0) dmg *= 1.1;
       if (def.state === 'crouch' && !m.high) dmg *= 1.3;
       let counter = false;

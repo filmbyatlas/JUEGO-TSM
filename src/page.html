@@ -20,6 +20,8 @@
 html, body { height: 100%; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 18px; line-height: 1.3; overflow: hidden; -webkit-text-size-adjust: 100%; }
 * { box-sizing: border-box; }
+body, #stage, #controls, #arena, .ctl, #joy { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
 #stage { height: 100%; display: flex; flex-direction: column; position: relative; }
 body.touch.portrait.playing #arena { flex: 1 1 auto; min-height: 40vh; }
 body.touch.portrait.playing #controls { flex: 0 0 auto; align-items: center; padding-top: 14px; }
@@ -40,7 +42,21 @@ body.touch.portrait.playing .ctl-group.right .ctl.small { height: 46px; }
 #game { pointer-events: none; }
 #topbar { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
 #topbar button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,0.55); color: var(--fg); font-size: 18px; cursor: pointer; }
-#topbar button.off { opacity: 0.55; }
+#topbar button.off { opacity: 0.55; text-decoration: line-through; }
+.player { font-size: 17px; color: var(--muted); margin: 4px 0 2px; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+.player b { color: var(--fg); }
+.btn.mini { font-size: 14px; padding: 6px 12px; min-width: 0; box-shadow: 0 2px 0 #15111b; }
+.who-form { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: center; margin: 10px 0; }
+.txt { font: inherit; font-size: 20px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--line); background: #1d1826; color: var(--fg); width: min(100%, 300px); }
+.txt:focus { outline: 2px solid var(--pink); }
+.who-sub { margin-top: 8px; }
+.who-list { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0; }
+.who-chip { border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--fg); border-radius: 12px; padding: 8px 12px; cursor: pointer; display: grid; text-align: left; font: inherit; }
+.who-chip b { font-family: var(--display); letter-spacing: 0.04em; font-weight: 400; font-size: 18px; }
+.who-chip span { font-size: 14px; color: var(--muted); }
+.who-chip.on { border-color: var(--pink); }
+.who-transfer { margin-top: 10px; text-align: left; border-top: 1px solid var(--line); padding-top: 8px; }
+.who-transfer summary { cursor: pointer; color: var(--gold); font-weight: 700; }
 body:not(.touch) #btn-full { display: none; }
 #topbar button:focus-visible, .btn:focus-visible, .ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 body:not(.touch) #btn-pause { display: none; }
@@ -58,14 +74,14 @@ body:not(.touch) #controls { display: none !important; }
 #controls { justify-content: space-between; align-items: flex-end; gap: 10px; }
 .ctl-group.right { display: grid; grid-template-columns: repeat(3, auto); gap: 8px; justify-items: end; }
 .ctl.small { height: 44px; width: 66px; font-size: 13px; }
-.ctl.jump { background: #7a5fd0; } .ctl.crouch { background: #5a7a3a; }
+.ctl.jump { background-color: #7a5fd0; } .ctl.crouch { background-color: #5a7a3a; }
 .ctl-group { display: flex; gap: 8px; align-items: flex-end; }
-.ctl { border: 0; border-radius: 14px; font-family: var(--display); font-size: 17px; letter-spacing: 0.04em; color: #fff; background: #2a2433; box-shadow: 0 4px 0 #15111b, inset 0 1px 0 rgba(255,255,255,0.12); width: 64px; height: 64px; touch-action: none; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; }
+.ctl { border: 0; border-radius: 14px; font-family: var(--display); font-size: 17px; letter-spacing: 0.04em; color: #fff; background: #2a2433; box-shadow: 0 4px 0 #15111b, inset 0 1px 0 rgba(255,255,255,0.12); width: 64px; height: 64px; touch-action: none; -webkit-tap-highlight-color: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; cursor: pointer; background-size: 100% 100%; background-position: center; background-repeat: no-repeat; -webkit-user-drag: none; }
 .ctl small { font-family: var(--body); font-size: 11px; color: var(--muted); font-weight: 700; margin-top: 3px; letter-spacing: 0.05em; }
 .ctl.on { transform: translateY(3px); box-shadow: 0 1px 0 #15111b; filter: brightness(1.25); }
 .ctl.move { width: 60px; height: 70px; font-size: 26px; }
-.ctl.jab { background: #b84e86; } .ctl.cross { background: #d2537f; } .ctl.upper { background: #e8468a; box-shadow: 0 4px 0 #7a1f45, inset 0 1px 0 rgba(255,255,255,0.15); }
-.ctl.dodge { background: #2f8a7f; } .ctl.block { background: #3a5a9a; }
+.ctl.jab { background-color: #b84e86; } .ctl.cross { background-color: #d2537f; } .ctl.upper { background-color: #e8468a; box-shadow: 0 4px 0 #7a1f45, inset 0 1px 0 rgba(255,255,255,0.15); }
+.ctl.dodge { background-color: #2f8a7f; } .ctl.block { background-color: #3a5a9a; }
 .ctl-def { display: flex; flex-direction: column; gap: 8px; }
 .ctl-def .ctl { height: 50px; width: 72px; font-size: 14px; }
 @media (max-width: 420px) { .ctl { width: 56px; height: 56px; font-size: 15px; } .ctl.small { width: 60px; height: 42px; } .ctl-group { gap: 6px; } #joy { width: 140px; height: 140px; } }
@@ -136,6 +152,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     <div id="topbar">
       <button id="btn-pause" type="button" aria-label="Pausa">⏸</button>
       <button id="btn-full" type="button" aria-label="Pantalla completa">⛶</button>
+      <button id="btn-music" type="button" aria-label="Música">🎵</button>
       <button id="btn-voice" type="button" aria-label="Voces">🗣️</button>
       <button id="btn-mute" type="button" aria-label="Silenciar">🔊</button>
     </div>
@@ -147,6 +164,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
         <h1>T<span>S</span>M</h1>
         <div class="sub">Todos Somos Muslera</div>
         <canvas id="title-portraits" class="portraits" width="640" height="300"></canvas>
+        <div class="player">Jugando como <b id="title-player">…</b> <button class="btn mini" id="btn-who" type="button">CAMBIAR</button></div>
         <div class="record">
           <b id="title-record">0 victorias · 0 derrotas</b>
           <canvas id="title-beltcv" width="440" height="120"></canvas>
@@ -159,6 +177,33 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
           <button class="btn" id="btn-belts" type="button">CINTURONES</button>
         </div>
         <div class="foot">Tú eres Muslera. Oscar hace boxeo. Tú no. Suerte.</div>
+      </div>
+    </section>
+
+    <section class="overlay" id="ov-who" hidden>
+      <div class="panel">
+        <div class="eyebrow">TSM · Todos Somos Muslera</div>
+        <h2>¿QUIÉN ERES?</h2>
+        <div class="state">Tu nombre guarda tus cinturones en este móvil. Si vuelves mañana y pones el mismo nombre, sigues donde lo dejaste.</div>
+        <div class="who-form">
+          <input class="txt" id="who-name" type="text" maxlength="16" placeholder="Tu nombre" autocomplete="off" autocapitalize="words">
+          <button class="btn primary" id="btn-who-enter" type="button">ENTRAR</button>
+        </div>
+        <div id="who-existing" hidden>
+          <div class="eyebrow who-sub">Ya han peleado en este móvil</div>
+          <div class="who-list" id="who-list"></div>
+        </div>
+        <details class="who-transfer">
+          <summary>Llevar mi progreso a otro móvil</summary>
+          <div class="state">Copia tu código aquí y pégalo en el otro móvil con "Importar".</div>
+          <div class="who-form">
+            <input class="txt" id="who-code" type="text" placeholder="TSM1.…" autocomplete="off" spellcheck="false">
+            <button class="btn mini" id="btn-code-copy" type="button">COPIAR MI CÓDIGO</button>
+            <button class="btn mini" id="btn-code-import" type="button">IMPORTAR</button>
+          </div>
+          <div class="state" id="who-msg"></div>
+        </details>
+        <div class="actions"><button class="btn" id="btn-who-back" type="button" hidden>VOLVER</button></div>
       </div>
     </section>
 
@@ -262,13 +307,13 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       <div id="joy-hint">mover</div>
     </div>
     <div class="ctl-group right">
-      <button class="ctl dodge small" data-a="dodge" type="button">ESQUIVA</button>
-      <button class="ctl crouch small" data-a="crouch" type="button">AGACHAR</button>
-      <button class="ctl jump small" data-a="jump" type="button">SALTO</button>
-      <button class="ctl jab" data-a="jab" type="button">JAB</button>
-      <button class="ctl cross" data-a="cross" type="button">CRUZ<small>cruzado</small></button>
-      <button class="ctl upper" data-a="upper" type="button">UPPER</button>
-      <button class="ctl block small" data-a="block" type="button" style="grid-column: 1 / span 3; width: 100%;">GUARDIA (mantener)</button>
+      <button class="ctl dodge small" data-a="dodge" data-label="ESQUIVA" type="button" aria-label="Esquiva"></button>
+      <button class="ctl crouch small" data-a="crouch" data-label="AGACHAR" type="button" aria-label="Agachar"></button>
+      <button class="ctl jump small" data-a="jump" data-label="SALTO" type="button" aria-label="Salto"></button>
+      <button class="ctl jab" data-a="jab" data-label="JAB" type="button" aria-label="Jab"></button>
+      <button class="ctl cross" data-a="cross" data-label="CRUZ" data-sub="cruzado" type="button" aria-label="Cruzado"></button>
+      <button class="ctl upper" data-a="upper" data-label="UPPER" type="button" aria-label="Uppercut"></button>
+      <button class="ctl block small" data-a="block" data-label="GUARDIA" data-sub="mantener" type="button" aria-label="Guardia (mantener)" style="grid-column: 1 / span 3; width: 100%;"></button>
     </div>
   </div>
 </div>

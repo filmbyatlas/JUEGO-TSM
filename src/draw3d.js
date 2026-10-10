@@ -168,8 +168,15 @@
       this.footB = sphere(0.1, this.skinDark, g); this.footB.scale.set(1.7, 0.5, 0.9);
       this.hipGroup = new THREE.Group(); g.add(this.hipGroup);
       const sw = B.belly ? 0.27 : 0.23;
-      const shorts = new THREE.Mesh(new THREE.CylinderGeometry(sw, sw * 0.98, B.belly ? 0.5 : 0.42, 14, 1), toon(C.shorts)); shorts.scale.z = 0.78; shorts.position.y = -(B.belly ? 0.2 : 0.17); shorts.castShadow = true; this.hipGroup.add(shorts);
-      const band = new THREE.Mesh(new THREE.CylinderGeometry(sw * 1.03, sw * 1.03, 0.07, 14, 1), toon(C.band)); band.scale.z = 0.78; band.position.y = 0.04; this.hipGroup.add(band);
+      const shortsMat = toon(C.shorts);
+      // pantalón: pelvis (sigue la cadera) + dos perneras que siguen cada muslo, así las piernas nunca lo atraviesan
+      const pelvisPts = [[sw * 0.92, -0.2], [sw * 1.06, -0.1], [sw * 1.04, 0.02], [sw * 0.9, 0.1]].map(([r, y]) => new THREE.Vector2(r, y));
+      const pelvis = new THREE.Mesh(new THREE.LatheGeometry(pelvisPts, 18), shortsMat); pelvis.scale.z = 0.8; pelvis.castShadow = true; this.hipGroup.add(pelvis);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(sw * 1.0, sw * 1.0, 0.07, 18, 1), toon(C.band)); band.scale.z = 0.8; band.position.y = 0.08; this.hipGroup.add(band);
+      this.shortF = makeBone(legR * 1.85, legR * 1.5, shortsMat, g); this.shortB = makeBone(legR * 1.85, legR * 1.5, shortsMat, g);
+      const hemMat = toon(C.band);
+      this.hemF = new THREE.Mesh(new THREE.CylinderGeometry(legR * 1.52, legR * 1.52, 0.035, 14, 1), hemMat); g.add(this.hemF);
+      this.hemB = new THREE.Mesh(new THREE.CylinderGeometry(legR * 1.52, legR * 1.52, 0.035, 14, 1), hemMat); g.add(this.hemB);
       // torso (pivote en la cadera)
       this.torso = new THREE.Group(); this.torso.rotation.order = 'YXZ'; g.add(this.torso);
       const pts = [];
@@ -203,6 +210,8 @@
         const quiff = box(hr * 0.5, hr * 0.32, hr * 0.9, hairMat, this.head); quiff.position.set(hr * 0.55, hr * 0.98, 0); quiff.rotation.z = -0.5;
       }
       const nose = sphere(hr * 0.17, this.skin, this.head, 8); nose.position.set(hr * 0.95, -hr * 0.05, 0); nose.scale.set(1.1, 0.9, 0.8);
+      // mandíbula con barba: la cabeza deja de ser una bola
+      const jaw = sphere(hr * 0.66, toon(C.beard), this.head, 14); jaw.position.set(hr * 0.22, -hr * 0.6, 0); jaw.scale.set(C.beardStyle === 'full' ? 1.05 : 0.95, C.beardStyle === 'full' ? 0.75 : 0.6, C.beardStyle === 'full' ? 1.2 : 1.05);
       for (const s of [-1, 1]) { const ear = sphere(hr * 0.22, this.skin, this.head, 8); ear.position.set(-hr * 0.05, 0, s * hr * 0.95); ear.scale.set(0.6, 1, 0.5); }
       this.neck = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.18, 10), this.skin); this.torso.add(this.neck);
       // medallas y toalla (entrada)
@@ -212,7 +221,10 @@
         const rib2 = rib.clone(); rib2.rotation.z = -0.15; this.medals.add(rib2);
         const med = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.012, 16), lam('#f2c230', { emissive: '#4a3a00' })); med.rotation.z = Math.PI / 2; med.position.set(0.25, 0.34 - i * 0.04, (i - 1) * 0.05); med.userData.noOutline = true; this.medals.add(med);
       }
-      this.towel = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.75, 0.05), lam('#f3efe6')); this.towel.position.set(-0.05, 0.42, -0.2); this.towel.rotation.z = 0.15; this.towel.userData.noOutline = true; this.torso.add(this.towel);
+      this.towel = new THREE.Group(); this.torso.add(this.towel);
+      const tw1 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 0.04), lam('#f3efe6')); tw1.position.set(0.1, 0.42, 0.2); tw1.rotation.x = 0.25; tw1.userData.noOutline = true; this.towel.add(tw1);
+      const tw2 = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.5, 0.04), lam('#ebe6da')); tw2.position.set(-0.12, 0.42, 0.2); tw2.rotation.x = 0.25; tw2.userData.noOutline = true; this.towel.add(tw2);
+      const tw3 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.12), lam('#f3efe6')); tw3.position.set(-0.01, 0.68, 0.18); tw3.userData.noOutline = true; this.towel.add(tw3);
       this.medals.visible = false; this.towel.visible = false;
       this.lastFace = '';
       outlineTree(g, 1.07);
@@ -261,6 +273,10 @@
         ik3(v.a, v.b, B.thigh, B.shin, v.pole, v.ik);
         setBone(th, v.a, v.ik.e); setBone(sh, v.ik.e, v.ik.t); kn.position.copy(v.ik.e);
         ft.position.set(v.ik.t.x + 0.06, v.ik.t.y - 0.02, v.ik.t.z);
+        // pernera del pantalón: desde la cadera hasta el 62 % del muslo
+        v.c.copy(v.a).lerp(v.ik.e, 0.62);
+        const sl = z < 0 ? this.shortF : this.shortB, hem = z < 0 ? this.hemF : this.hemB;
+        setBone(sl, v.a, v.c); hem.position.copy(v.c); hem.quaternion.copy(sl.quaternion);
       }
       this.hipGroup.position.set(0, hipY, 0); this.hipGroup.rotation.set(0, C.twist * 0.25, -C.lean * 0.3);
       // --- torso con muelle de reacción
@@ -405,7 +421,11 @@
     const house = box(2.6, 3.3, 9, lam('#ffffff', { map: houseTexture() }), S); house.position.set(9.5, 1.65, 0.2);
     const roofH = box(2.9, 0.12, 9.3, lam('#8a4030'), S); roofH.position.set(9.5, 3.36, 0.2);
     for (let i = 0; i < 14; i++) { const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 9.3, 8, 1, false, 0, Math.PI), lam('#9a4a30')); tile.rotation.x = Math.PI / 2; tile.position.set(8.15 + i * 0.2, 3.44, 0.2); S.add(tile); }
-    const hdoor = box(0.1, 1.9, 0.8, lam('#2b2520'), S); hdoor.position.set(8.18, 0.95, -0.8);
+    const hdoor = box(0.1, 1.9, 0.8, lam('#120e0c'), S); hdoor.position.set(8.17, 0.95, -0.8); hdoor.receiveShadow = false;
+    const leaf = box(0.06, 1.9, 0.8, lam('#3a2e26'), S); leaf.position.set(7.8, 0.95, -1.23); leaf.rotation.y = Math.PI / 2;
+    const frame = box(0.14, 2.0, 0.9, lam('#5a4a3a'), S); frame.position.set(8.19, 1.0, -0.8); frame.renderOrder = -1;
+    glow('#ffd9a0', 1.6, 8.05, 1.2, -0.8).material.opacity = 0.5;
+    const doorLight = new THREE.PointLight('#ffd9a0', 0.9, 4, 2); doorLight.position.set(7.9, 1.4, -0.8); S.add(doorLight);
     const wl = box(0.1, 0.26, 0.14, lam('#ffe9b0', { emissive: '#ffd080', emissiveIntensity: 0.9 }), S); wl.position.set(8.17, 2.1, 0.2); glow('#ffc27a', 1.8, 8.1, 2.1, 0.2);
     const hdoor2 = box(0.1, 1.9, 0.8, lam('#2b2520'), S); hdoor2.position.set(8.18, 0.95, 2.6);
     // maceta y árbol con guirnalda
@@ -517,7 +537,10 @@
     if (fr.cam) { fx = fr.cam.focus.x; fy = fr.cam.focus.y; fz = fr.cam.focus.z; yaw = fr.cam.yaw; dist = fr.cam.dist; height = fr.cam.height != null ? fr.cam.height : 0.6; }
     else if (sim && show) {
       const p = sim.p, o = sim.o;
-      const mx = (p.x + o.x) / 2, mz = (p.z + o.z) / 2; let dx = o.x - p.x, dz = o.z - p.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
+      // si uno está tumbado, su cuerpo se extiende hacia atrás: se encuadra el centro del cuerpo
+      const lyP = (p.state === 'down' || p.state === 'rise') ? 0.8 : 0, lyO = (o.state === 'down' || o.state === 'rise') ? 0.8 : 0;
+      const px = p.x - p.fx * lyP, pz = p.z - p.fz * lyP, ox = o.x - o.fx * lyO, oz = o.z - o.fz * lyO;
+      const mx = (px + ox) / 2, mz = (pz + oz) / 2; let dx = ox - px, dz = oz - pz; const d = (Math.hypot(dx, dz) || 1) + (lyP + lyO) * 0.8; dx /= Math.hypot(dx, dz) || 1; dz /= Math.hypot(ox - px, oz - pz) || 1;
       let nx = -dz, nz = dx; if (nz < 0) { nx = -nx; nz = -nz; }   // la cámara nunca pasa detrás de la carpa
       yaw = clamp(Math.atan2(nz, nx), Math.PI / 2 - 0.4, Math.PI / 2 + 0.4);   // el jardín es estrecho: vista casi frontal
       const portrait = aspect < 1;
@@ -533,7 +556,8 @@
     } else { yaw = Math.PI / 2 + Math.sin(fr.t * 0.15) * 0.5; dist = 8; fx = 4.8; fz = 0.3; fy = 1.1; height = 1.4; }
     const k = fr.snap ? 1 : 1 - Math.pow(0.0008, dt);
     const c = R3.cam;
-    c.yaw = lerp(c.yaw, yaw, k * 0.8); c.dist = lerp(c.dist, dist, k * 0.7); c.fx = lerp(c.fx, fx, k); c.fy = lerp(c.fy, fy, k); c.fz = lerp(c.fz, fz, k);
+    let dy = yaw - c.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+    c.yaw = fr.snap ? yaw : c.yaw + dy * k * 0.8; c.dist = lerp(c.dist, dist, fr.snap ? 1 : k * 0.7); c.fx = lerp(c.fx, fx, k); c.fy = lerp(c.fy, fy, k); c.fz = lerp(c.fz, fz, k);
     const sh = (fr.shake || 0) * 0.006;
     // la cámara nunca sale del jardín: ni dentro del seto, ni dentro de la casa, ni detrás de la valla
     let cx = c.fx + Math.cos(c.yaw) * c.dist, cz = c.fz + Math.sin(c.yaw) * c.dist;

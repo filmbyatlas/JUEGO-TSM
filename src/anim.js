@@ -63,7 +63,7 @@
         lying: 0, armsUp: 0, elbowOut: 0.08, mouth: 0,
       };
       // guardia base (relativa a los pies)
-      if (low) { T.leadX = 0.36; T.leadY = 1.18; T.rearX = 0.08; T.rearY = 1.1; T.leadZ = -0.24; T.rearZ = 0.22; T.lean = 0.04; T.elbowOut = 0.12; }
+      if (low) { T.leadX = 0.46; T.leadY = 1.16; T.rearX = 0.26; T.rearY = 1.06; T.leadZ = -0.3; T.rearZ = 0.32; T.lean = 0.04; T.elbowOut = 0.12; }
       else { T.leadX = 0.42; T.leadY = 1.9; T.rearX = 0.2; T.rearY = 1.82; T.leadZ = -0.16; T.rearZ = 0.18; T.lean = 0.1; T.elbowOut = 0.04; }
       const s = f.state, st = f.t;
       const m = f.move;
@@ -82,7 +82,7 @@
         }
         case 'crouch': {
           T.crouch = 0.62; T.lean = 0.35; T.headY = -0.02; T.headTilt = -0.15; T.footFX = 0.34; T.footBX = -0.3; T.stance = 0.1;
-          T.leadX = 0.3; T.leadY = 0.9; T.rearX = 0.1; T.rearY = 0.85; T.elbowOut = 0.16; break;
+          T.leadX = 0.42; T.leadY = 0.92; T.rearX = 0.3; T.rearY = 0.86; T.leadZ = -0.32; T.rearZ = 0.34; T.elbowOut = 0.16; break;
         }
         case 'jab': case 'cross': case 'upper': {
           const tN = st / slow; const w = m.windup, a = m.active, r = m.recover;
@@ -128,8 +128,8 @@
         case 'block': {
           const k = low ? clamp(f.blockT / Math.max(0.01, f.profile.blockStartup), 0, 1) : 1;
           this.setRates({ leadX: 22, leadY: 22, rearX: 22, rearY: 22 });
-          T.leadX = lerp(T.leadX, 0.48, k); T.leadY = lerp(T.leadY, 1.98, k); T.leadZ = -0.14;
-          T.rearX = lerp(T.rearX, 0.34, k); T.rearY = lerp(T.rearY, 1.9, k); T.rearZ = 0.14;
+          T.leadX = lerp(T.leadX, 0.5, k); T.leadY = lerp(T.leadY, 1.98, k); T.leadZ = -0.21;
+          T.rearX = lerp(T.rearX, 0.4, k); T.rearY = lerp(T.rearY, 1.9, k); T.rearZ = 0.21;
           T.crouch += 0.06; T.lean += 0.12; T.headY = -0.03; T.elbowOut = 0.02; break;
         }
         case 'dodge': {
