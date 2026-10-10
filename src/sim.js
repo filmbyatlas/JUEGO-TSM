@@ -112,9 +112,9 @@
     constructor(opts = {}) {
       this.rng = makeRng(opts.seed || ((Math.random() * 1e9) | 0));
       this.ai = Object.assign({
-        reactJab: 0.60, reactHeavy: 0.78, reactDelay: 0.10,
+        reactJab: 0.65, reactHeavy: 0.82, reactDelay: 0.10,
         aggression: 1.0, comboBreak: 0.9, tauntEvery: [15, 25], tauntDur: 0.9,
-        preferDodge: 0.28, dmgScale: 0.7, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.5,
+        preferDodge: 0.28, dmgScale: 0.78, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.5,
       }, opts.ai || {});
       this.events = [];
       this.time = 0;
