@@ -426,18 +426,18 @@
     // casa a la derecha (lateral completo) con tejado, puerta abierta y farol
     // la pared de la casa se construye en tres piezas para dejar un hueco de puerta de verdad (z -1.2..-0.4, 2 m de alto)
     const houseMat = lam('#ffffff', { map: houseTexture() });
-    const hA = box(2.6, 3.3, 3.1, houseMat, S); hA.position.set(11.9, 1.65, -2.75);
-    const hB = box(2.6, 3.3, 12.1, houseMat, S); hB.position.set(11.9, 1.65, 5.65);
-    const hC = box(2.6, 1.3, 0.8, houseMat, S); hC.position.set(11.9, 2.65, -0.8);
+    const hA = box(2.6, 3.3, 3.0, houseMat, S); hA.position.set(11.9, 1.65, -2.8);
+    const hB = box(2.6, 3.3, 12.0, houseMat, S); hB.position.set(11.9, 1.65, 5.7);
+    const hC = box(2.6, 1.0, 1.0, houseMat, S); hC.position.set(11.9, 2.8, -0.8);
     const roofH = box(2.9, 0.12, 16.3, lam('#8a4030'), S); roofH.position.set(11.9, 3.36, 3.7);
     for (let i = 0; i < 14; i++) { const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 16.3, 8, 1, false, 0, Math.PI), lam('#9a4a30')); tile.rotation.x = Math.PI / 2; tile.position.set(10.55 + i * 0.2, 3.44, 3.7); S.add(tile); }
     // interior oscuro visible a través del hueco, con luz cálida dentro
-    const room = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.0, 1.0), lam('#3a2e26', { side: THREE.BackSide })); room.position.set(11.8, 1.0, -0.8); S.add(room);
-    const roomFloor = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), lam('#8a6a4a')); roomFloor.rotation.x = -Math.PI / 2; roomFloor.position.set(11.8, 0.005, -0.8); S.add(roomFloor);
+    const room = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.3, 1.2), lam('#3a2e26', { side: THREE.BackSide })); room.position.set(11.8, 1.15, -0.8); S.add(room);
+    const roomFloor = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), lam('#8a6a4a')); roomFloor.rotation.x = -Math.PI / 2; roomFloor.position.set(11.8, 0.005, -0.8); S.add(roomFloor);
     const jambMat = lam('#5a4a3a');
-    for (const z of [-1.24, -0.36]) { const j = box(0.1, 2.02, 0.08, jambMat, S); j.position.set(10.57, 1.0, z); }
-    const lintel = box(0.1, 0.08, 0.96, jambMat, S); lintel.position.set(10.57, 2.02, -0.8);
-    const leaf = box(0.06, 1.9, 0.8, lam('#3a2e26'), S); leaf.position.set(10.17, 0.95, -1.25); leaf.rotation.y = Math.PI / 2;
+    for (const z of [-1.34, -0.26]) { const j = box(0.1, 2.32, 0.08, jambMat, S); j.position.set(10.57, 1.15, z); }
+    const lintel = box(0.1, 0.08, 1.16, jambMat, S); lintel.position.set(10.57, 2.32, -0.8);
+    const leaf = box(0.06, 2.2, 1.0, lam('#3a2e26'), S); leaf.position.set(10.07, 1.1, -1.35); leaf.rotation.y = Math.PI / 2;
     const doorLight = new THREE.PointLight('#ffd9a0', 1.2, 5, 2); doorLight.position.set(11.3, 1.5, -0.8); S.add(doorLight);
     glow('#ffd9a0', 1.4, 10.9, 1.3, -0.8).material.opacity = 0.35;
     const wl = box(0.1, 0.26, 0.14, lam('#ffe9b0', { emissive: '#ffd080', emissiveIntensity: 0.9 }), S); wl.position.set(10.57, 2.1, 0.2); glow('#ffc27a', 1.8, 10.5, 2.1, 0.2);

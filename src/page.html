@@ -33,6 +33,23 @@ body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right
 body.touch.playing:not(.portrait) #controls .ctl, body.touch.playing:not(.portrait) #joy { pointer-events: auto; opacity: 0.85; }
 body.touch.playing:not(.portrait) #topbar { bottom: 6px; right: auto; left: 50%; transform: translateX(-50%); gap: 6px; }
 body.touch.playing:not(.portrait) #topbar button { width: 34px; height: 34px; font-size: 14px; opacity: 0.75; }
+/* ventana muy baja (navegador con barras, o el juego dentro de otra página): botonera y joystick más pequeños */
+@media (max-height: 470px) {
+  body.touch.playing:not(.portrait) .ctl-group.right { gap: 5px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl { width: 50px; height: 50px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl.small { width: 50px; height: 34px; }
+  body.touch.playing:not(.portrait) #joy { width: 120px; height: 110px; }
+  body.touch.playing:not(.portrait) #joy-base { width: 84px; height: 84px; margin: -42px 0 0 -42px; }
+  body.touch.playing:not(.portrait) #joy-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+  body.touch.playing:not(.portrait) #controls { padding: 4px 8px 4px; }
+  body.touch.playing:not(.portrait) #topbar { bottom: 2px; }
+  body.touch.playing:not(.portrait) #topbar button { width: 28px; height: 28px; font-size: 12px; }
+}
+@media (max-height: 330px) {
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl { width: 42px; height: 42px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl.small { width: 42px; height: 28px; }
+  body.touch.playing:not(.portrait) #joy { width: 100px; height: 90px; }
+}
 /* táctil en vertical: joystick grande y dos filas de botones */
 body.touch.portrait.playing #joy { width: 150px; height: 170px; }
 body.touch.portrait.playing .ctl-group.right .ctl { width: 66px; height: 66px; }

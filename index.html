@@ -40,6 +40,23 @@ body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right
 body.touch.playing:not(.portrait) #controls .ctl, body.touch.playing:not(.portrait) #joy { pointer-events: auto; opacity: 0.85; }
 body.touch.playing:not(.portrait) #topbar { bottom: 6px; right: auto; left: 50%; transform: translateX(-50%); gap: 6px; }
 body.touch.playing:not(.portrait) #topbar button { width: 34px; height: 34px; font-size: 14px; opacity: 0.75; }
+/* ventana muy baja (navegador con barras, o el juego dentro de otra página): botonera y joystick más pequeños */
+@media (max-height: 470px) {
+  body.touch.playing:not(.portrait) .ctl-group.right { gap: 5px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl { width: 50px; height: 50px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl.small { width: 50px; height: 34px; }
+  body.touch.playing:not(.portrait) #joy { width: 120px; height: 110px; }
+  body.touch.playing:not(.portrait) #joy-base { width: 84px; height: 84px; margin: -42px 0 0 -42px; }
+  body.touch.playing:not(.portrait) #joy-knob { width: 40px; height: 40px; margin: -20px 0 0 -20px; }
+  body.touch.playing:not(.portrait) #controls { padding: 4px 8px 4px; }
+  body.touch.playing:not(.portrait) #topbar { bottom: 2px; }
+  body.touch.playing:not(.portrait) #topbar button { width: 28px; height: 28px; font-size: 12px; }
+}
+@media (max-height: 330px) {
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl { width: 42px; height: 42px; }
+  body.touch.playing:not(.portrait) .ctl-group.right .ctl.small { width: 42px; height: 28px; }
+  body.touch.playing:not(.portrait) #joy { width: 100px; height: 90px; }
+}
 /* táctil en vertical: joystick grande y dos filas de botones */
 body.touch.portrait.playing #joy { width: 150px; height: 170px; }
 body.touch.portrait.playing .ctl-group.right .ctl { width: 66px; height: 66px; }
@@ -2439,18 +2456,18 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     // casa a la derecha (lateral completo) con tejado, puerta abierta y farol
     // la pared de la casa se construye en tres piezas para dejar un hueco de puerta de verdad (z -1.2..-0.4, 2 m de alto)
     const houseMat = lam('#ffffff', { map: houseTexture() });
-    const hA = box(2.6, 3.3, 3.1, houseMat, S); hA.position.set(11.9, 1.65, -2.75);
-    const hB = box(2.6, 3.3, 12.1, houseMat, S); hB.position.set(11.9, 1.65, 5.65);
-    const hC = box(2.6, 1.3, 0.8, houseMat, S); hC.position.set(11.9, 2.65, -0.8);
+    const hA = box(2.6, 3.3, 3.0, houseMat, S); hA.position.set(11.9, 1.65, -2.8);
+    const hB = box(2.6, 3.3, 12.0, houseMat, S); hB.position.set(11.9, 1.65, 5.7);
+    const hC = box(2.6, 1.0, 1.0, houseMat, S); hC.position.set(11.9, 2.8, -0.8);
     const roofH = box(2.9, 0.12, 16.3, lam('#8a4030'), S); roofH.position.set(11.9, 3.36, 3.7);
     for (let i = 0; i < 14; i++) { const tile = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 16.3, 8, 1, false, 0, Math.PI), lam('#9a4a30')); tile.rotation.x = Math.PI / 2; tile.position.set(10.55 + i * 0.2, 3.44, 3.7); S.add(tile); }
     // interior oscuro visible a través del hueco, con luz cálida dentro
-    const room = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.0, 1.0), lam('#3a2e26', { side: THREE.BackSide })); room.position.set(11.8, 1.0, -0.8); S.add(room);
-    const roomFloor = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.0), lam('#8a6a4a')); roomFloor.rotation.x = -Math.PI / 2; roomFloor.position.set(11.8, 0.005, -0.8); S.add(roomFloor);
+    const room = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.3, 1.2), lam('#3a2e26', { side: THREE.BackSide })); room.position.set(11.8, 1.15, -0.8); S.add(room);
+    const roomFloor = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 1.2), lam('#8a6a4a')); roomFloor.rotation.x = -Math.PI / 2; roomFloor.position.set(11.8, 0.005, -0.8); S.add(roomFloor);
     const jambMat = lam('#5a4a3a');
-    for (const z of [-1.24, -0.36]) { const j = box(0.1, 2.02, 0.08, jambMat, S); j.position.set(10.57, 1.0, z); }
-    const lintel = box(0.1, 0.08, 0.96, jambMat, S); lintel.position.set(10.57, 2.02, -0.8);
-    const leaf = box(0.06, 1.9, 0.8, lam('#3a2e26'), S); leaf.position.set(10.17, 0.95, -1.25); leaf.rotation.y = Math.PI / 2;
+    for (const z of [-1.34, -0.26]) { const j = box(0.1, 2.32, 0.08, jambMat, S); j.position.set(10.57, 1.15, z); }
+    const lintel = box(0.1, 0.08, 1.16, jambMat, S); lintel.position.set(10.57, 2.32, -0.8);
+    const leaf = box(0.06, 2.2, 1.0, lam('#3a2e26'), S); leaf.position.set(10.07, 1.1, -1.35); leaf.rotation.y = Math.PI / 2;
     const doorLight = new THREE.PointLight('#ffd9a0', 1.2, 5, 2); doorLight.position.set(11.3, 1.5, -0.8); S.add(doorLight);
     glow('#ffd9a0', 1.4, 10.9, 1.3, -0.8).material.opacity = 0.35;
     const wl = box(0.1, 0.26, 0.14, lam('#ffe9b0', { emissive: '#ffd080', emissiveIntensity: 0.9 }), S); wl.position.set(10.57, 2.1, 0.2); glow('#ffc27a', 1.8, 10.5, 2.1, 0.2);
@@ -2725,9 +2742,11 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       const u = new SpeechSynthesisUtterance(text.replace(/¡|!|¿/g, '').replace('llameg', 'yamej').replace('tapel', 'tapél'));
       u.lang = 'es-ES'; u.rate = who === 'muslera' ? 0.98 : 1.06; u.pitch = who === 'muslera' ? 0.82 : 1.0; u.volume = 1;
       const v = pickVoice(who); if (v) u.voice = v;
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      speechSynthesis.cancel(); setTimeout(() => { try { speechSynthesis.speak(u); } catch (e) { } }, 60);
     } catch (e) { }
   }
+  // el primer toque desbloquea la síntesis de voz en iOS (una frase vacía dentro del gesto)
+  function unlockSpeech() { if (G.speechOk || !('speechSynthesis' in window)) return; G.speechOk = true; try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { } }
   function musicMode() { if (G.sim && G.sim.phase === 'break') return 'over'; return G.screen === 'fight' ? 'fight' : G.screen === 'pool' ? 'pool' : G.screen === 'intro' ? 'intro' : (G.screen === 'over' || G.screen === 'corner') ? 'over' : 'menu'; }
   function cancelSpeech() { if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch (e) { } }
 
@@ -2755,6 +2774,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     document.body.classList.toggle('touch', G.touch);
     G.use3d = !!(R3 && R3.init($('game3d'), { mobile: G.touch }));
     AU.muted = !!settings.muted; AU.music.enabled = !!settings.music; updateMuteBtn();
+    if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) $('btn-full').hidden = true;
     bindInput(); bindUI(); paintButtons();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(paintButtons);
     resize(); window.addEventListener('resize', resize);
@@ -2817,7 +2837,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     zone.addEventListener('pointerup', endJoy); zone.addEventListener('pointercancel', endJoy);
     $('arena').addEventListener('pointerdown', () => { AU.init(); if (G.screen === 'intro') skipIntro(); });
     // cualquier toque, clic o tecla desbloquea el audio en el móvil y arranca la música
-    const unlock = () => { AU.unlock(); if (AU.ready) AU.startMusic(musicMode()); };
+    const unlock = () => { AU.unlock(); unlockSpeech(); if (AU.ready) AU.startMusic(musicMode()); };
     for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, unlock, { passive: true });
   }
   // convierte la entrada (relativa a la pantalla) en acercarse/lateral respecto al rival
@@ -2855,10 +2875,10 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       const W = Math.round(r.width), H = Math.round(r.height), S = 3;
       if (b.dataset.painted === W + 'x' + H) continue; b.dataset.painted = W + 'x' + H;
       const c = document.createElement('canvas'); c.width = W * S; c.height = H * S; const ctx = c.getContext('2d'); ctx.scale(S, S);
-      const wide = W > H * 1.6, short = H < 52, withIcon = !wide && !short && !!icons[a];
+      const wide = W > H * 1.6, short = H < 52, tiny = H < 46, withIcon = !wide && !short && !!icons[a];
       if (withIcon) { ctx.save(); ctx.translate(W * 0.5 - H * 0.5, 0); ctx.scale(H / W, 1); icons[a](ctx, W, H * 0.9); ctx.restore(); }
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-      const fs = wide ? 17 : short ? 13 : (label.length > 5 ? 13 : 16);
+      const fs = wide ? (H < 40 ? 13 : 17) : tiny ? (label.length > 5 ? 9 : 11) : short ? (label.length > 5 ? 10 : 13) : (label.length > 5 ? 13 : 16);
       ctx.font = `${fs}px "Anton", Impact, "Arial Black", sans-serif`;
       if (wide) {
         // botón ancho: icono a la izquierda, texto grande y subtítulo pequeño a la derecha
@@ -2866,9 +2886,11 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
         ctx.textAlign = 'left'; ctx.fillText(label, H * 1.05, H * 0.5); const lw = ctx.measureText(label).width;
         if (sub) { ctx.font = `700 11px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.75)'; const sw = ctx.measureText(sub.toUpperCase()).width; if (H * 1.05 + lw + 10 + sw <= W - 8) { ctx.textAlign = 'right'; ctx.fillText(sub.toUpperCase(), W - 10, H * 0.52); } }
       } else {
-        const ty = withIcon ? H * 0.8 : (sub ? H * 0.42 : H * 0.5);
-        ctx.fillText(label, W / 2, ty);
-        if (sub && !withIcon) { ctx.font = `700 10px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(sub, W / 2, H * 0.66); }
+        const ty = withIcon ? H * 0.8 : (sub && !tiny ? H * 0.42 : H * 0.5);
+        if (!withIcon && !tiny && !short && icons[a] === undefined) { }
+        if (!withIcon && H >= 46 && icons[a]) { ctx.save(); ctx.translate(W * 0.5 - H * 0.5, 0); ctx.scale(H / W, 1); icons[a](ctx, W, H * 0.9); ctx.restore(); ctx.fillText(label, W / 2, H * 0.8); }
+        else ctx.fillText(label, W / 2, ty);
+        if (sub && !withIcon && !tiny) { ctx.font = `700 10px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(sub, W / 2, H * 0.66); }
       }
       b.style.backgroundImage = `url(${c.toDataURL()})`; b.style.backgroundSize = '100% 100%'; b.style.backgroundRepeat = 'no-repeat'; b.style.backgroundPosition = 'center';
     }
@@ -3221,7 +3243,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
 
   function renderHUD(ctx, s) {
     const sim = G.sim, cw = G.cw, ch = G.ch;
-    const u = clamp(Math.min(cw / 960, ch / 540), 0.5, 1.4);
+    const u = clamp(Math.min(cw / 960, ch / 540), 0.34, 1.4);
     const pad = 10 * u, barW = Math.min(cw * 0.5 - 60 * u - 16 * u, 380 * u), barH = 18 * u, top = pad + 6 * u;
     const font = (sz, fam) => `${sz * u}px ${fam || '"Barlow Condensed", "Arial Narrow", sans-serif'}`;
     const drawBar = (x, y, w, h, frac, color, right, lowColor) => {

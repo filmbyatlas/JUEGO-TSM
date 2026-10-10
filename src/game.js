@@ -108,9 +108,11 @@
       const u = new SpeechSynthesisUtterance(text.replace(/¡|!|¿/g, '').replace('llameg', 'yamej').replace('tapel', 'tapél'));
       u.lang = 'es-ES'; u.rate = who === 'muslera' ? 0.98 : 1.06; u.pitch = who === 'muslera' ? 0.82 : 1.0; u.volume = 1;
       const v = pickVoice(who); if (v) u.voice = v;
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
+      speechSynthesis.cancel(); setTimeout(() => { try { speechSynthesis.speak(u); } catch (e) { } }, 60);
     } catch (e) { }
   }
+  // el primer toque desbloquea la síntesis de voz en iOS (una frase vacía dentro del gesto)
+  function unlockSpeech() { if (G.speechOk || !('speechSynthesis' in window)) return; G.speechOk = true; try { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } catch (e) { } }
   function musicMode() { if (G.sim && G.sim.phase === 'break') return 'over'; return G.screen === 'fight' ? 'fight' : G.screen === 'pool' ? 'pool' : G.screen === 'intro' ? 'intro' : (G.screen === 'over' || G.screen === 'corner') ? 'over' : 'menu'; }
   function cancelSpeech() { if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch (e) { } }
 
@@ -138,6 +140,7 @@
     document.body.classList.toggle('touch', G.touch);
     G.use3d = !!(R3 && R3.init($('game3d'), { mobile: G.touch }));
     AU.muted = !!settings.muted; AU.music.enabled = !!settings.music; updateMuteBtn();
+    if (!(document.fullscreenEnabled || document.webkitFullscreenEnabled)) $('btn-full').hidden = true;
     bindInput(); bindUI(); paintButtons();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(paintButtons);
     resize(); window.addEventListener('resize', resize);
@@ -200,7 +203,7 @@
     zone.addEventListener('pointerup', endJoy); zone.addEventListener('pointercancel', endJoy);
     $('arena').addEventListener('pointerdown', () => { AU.init(); if (G.screen === 'intro') skipIntro(); });
     // cualquier toque, clic o tecla desbloquea el audio en el móvil y arranca la música
-    const unlock = () => { AU.unlock(); if (AU.ready) AU.startMusic(musicMode()); };
+    const unlock = () => { AU.unlock(); unlockSpeech(); if (AU.ready) AU.startMusic(musicMode()); };
     for (const ev of ['touchend', 'click', 'keydown']) document.addEventListener(ev, unlock, { passive: true });
   }
   // convierte la entrada (relativa a la pantalla) en acercarse/lateral respecto al rival
@@ -238,10 +241,10 @@
       const W = Math.round(r.width), H = Math.round(r.height), S = 3;
       if (b.dataset.painted === W + 'x' + H) continue; b.dataset.painted = W + 'x' + H;
       const c = document.createElement('canvas'); c.width = W * S; c.height = H * S; const ctx = c.getContext('2d'); ctx.scale(S, S);
-      const wide = W > H * 1.6, short = H < 52, withIcon = !wide && !short && !!icons[a];
+      const wide = W > H * 1.6, short = H < 52, tiny = H < 46, withIcon = !wide && !short && !!icons[a];
       if (withIcon) { ctx.save(); ctx.translate(W * 0.5 - H * 0.5, 0); ctx.scale(H / W, 1); icons[a](ctx, W, H * 0.9); ctx.restore(); }
       ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = 2; ctx.shadowOffsetY = 1;
-      const fs = wide ? 17 : short ? 13 : (label.length > 5 ? 13 : 16);
+      const fs = wide ? (H < 40 ? 13 : 17) : tiny ? (label.length > 5 ? 9 : 11) : short ? (label.length > 5 ? 10 : 13) : (label.length > 5 ? 13 : 16);
       ctx.font = `${fs}px "Anton", Impact, "Arial Black", sans-serif`;
       if (wide) {
         // botón ancho: icono a la izquierda, texto grande y subtítulo pequeño a la derecha
@@ -249,9 +252,11 @@
         ctx.textAlign = 'left'; ctx.fillText(label, H * 1.05, H * 0.5); const lw = ctx.measureText(label).width;
         if (sub) { ctx.font = `700 11px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.75)'; const sw = ctx.measureText(sub.toUpperCase()).width; if (H * 1.05 + lw + 10 + sw <= W - 8) { ctx.textAlign = 'right'; ctx.fillText(sub.toUpperCase(), W - 10, H * 0.52); } }
       } else {
-        const ty = withIcon ? H * 0.8 : (sub ? H * 0.42 : H * 0.5);
-        ctx.fillText(label, W / 2, ty);
-        if (sub && !withIcon) { ctx.font = `700 10px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(sub, W / 2, H * 0.66); }
+        const ty = withIcon ? H * 0.8 : (sub && !tiny ? H * 0.42 : H * 0.5);
+        if (!withIcon && !tiny && !short && icons[a] === undefined) { }
+        if (!withIcon && H >= 46 && icons[a]) { ctx.save(); ctx.translate(W * 0.5 - H * 0.5, 0); ctx.scale(H / W, 1); icons[a](ctx, W, H * 0.9); ctx.restore(); ctx.fillText(label, W / 2, H * 0.8); }
+        else ctx.fillText(label, W / 2, ty);
+        if (sub && !withIcon && !tiny) { ctx.font = `700 10px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillText(sub, W / 2, H * 0.66); }
       }
       b.style.backgroundImage = `url(${c.toDataURL()})`; b.style.backgroundSize = '100% 100%'; b.style.backgroundRepeat = 'no-repeat'; b.style.backgroundPosition = 'center';
     }
@@ -604,7 +609,7 @@
 
   function renderHUD(ctx, s) {
     const sim = G.sim, cw = G.cw, ch = G.ch;
-    const u = clamp(Math.min(cw / 960, ch / 540), 0.5, 1.4);
+    const u = clamp(Math.min(cw / 960, ch / 540), 0.34, 1.4);
     const pad = 10 * u, barW = Math.min(cw * 0.5 - 60 * u - 16 * u, 380 * u), barH = 18 * u, top = pad + 6 * u;
     const font = (sz, fam) => `${sz * u}px ${fam || '"Barlow Condensed", "Arial Narrow", sans-serif'}`;
     const drawBar = (x, y, w, h, frac, color, right, lowColor) => {
