@@ -51,7 +51,7 @@
   // ----------------------------------------------------------- frases épicas
   const QUOTES = {
     muslera: { frances: 'Yo te puedo hablar en francés: como tú tapel, yo llameg Musler.', gordo: 'Un gordo en un súper es un súper gordo.', anal: '¡Y se la metí por detrás, por el culo, anal!', bajas: '¿Bajas tío? Eh eh eh eh ¿bajas? Eh eh ¿bajas?' },
-    oscar: { btc: 'Compra BTC, bro.', especular: 'Especular e invertir no es lo mismo, bro.', dios: 'Soy Dios.', marito: '¡Maritocracia!', trump: '¡Viva Trump!' },
+    oscar: { btc: 'Compra BTC, bro.', especular: 'Especular e invertir no es lo mismo, bro.', dios: 'Soy Dios.', marito: '¡Meritocracia!', trump: '¡Viva Trump!' },
   };
   function quote(who, key, opts) {
     opts = opts || {};
@@ -251,7 +251,7 @@
     showScreen('none');
     if (choice === 'pool' && !sim.poolUsed) {
       sim.applyBreakChoice('pool'); save.pool++; persist();
-      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 7.2) }; AU.crowd(0.15);
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 6.2) }; AU.crowd(0.15);
       say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
     } else {
       sim.applyBreakChoice('rest');
@@ -324,7 +324,8 @@
           const byP = e.by === 'muslera';
           if (e.counter) AU.counter(); else AU.punch(e.move === 'fly' ? 'upper' : e.move);
           shake(e.counter ? 14 : (e.move === 'upper' || e.move === 'fly') ? 10 : e.move === 'cross' ? 6 : 3);
-          if (e.counter || e.move === 'upper' || e.move === 'fly') { G.cam.zoom = e.counter ? 0.8 : 0.9; G.cam.zoomT = e.counter ? 0.6 : 0.35; }
+          if (e.counter || e.move === 'upper' || e.move === 'fly') { G.cam.zoom = e.counter ? 0.8 : 0.88; G.cam.zoomT = e.counter ? 0.6 : 0.35; }
+          else if (G.cam.zoomT <= 0) { G.cam.zoom = 0.95; G.cam.zoomT = 0.18; }
           burst(e.x, e.y, e.z, e.counter ? 22 : 10, { color: byP ? '#ffe36b' : '#ffffff', speed: e.counter ? 3.2 : 1.8 });
           G.fx.ring.push({ x: e.x, y: e.y, z: e.z, t: 0, big: e.counter || e.move === 'upper' || e.move === 'fly' });
           const word = e.counter ? '¡CONTRA!' : e.move === 'fly' ? '¡VOLADOR!' : e.move === 'upper' ? pick(['¡UPPER!', '¡GANCHO!']) : pick(['¡PUM!', '¡PAM!', '¡ZAS!', '¡TOMA!', '¡CLONC!']);
@@ -438,17 +439,17 @@
     // Oscar se queda en su esquina
     o.state = 'idle'; o.t += dt; o.x = 6.4; o.z = 0.2;
     // Muslera camina hasta el borde de la piscina
-    const tx = P.px, tz = 3.45;
+    const tx = P.px, tz = 3.78;
     const k = 1 - Math.pow(1 - walkK, 2);
     p.x = lerp(P.x0, tx, k); p.z = lerp(P.z0, tz, k);
     p.yaw = -Math.PI / 2; p.fx = 0; p.fz = 1; p.t += dt;
     const moving = walkK < 1; p.state = moving ? 'walk' : 'idle'; p.moveA = moving ? 1 : 0; p.speed = moving ? 1.4 : 0;
     const dip = dunk - out;
     const mode = (dunk > 0 && dunk < 1) || (out > 0 && out < 1) ? 'splash' : under ? 'under' : shaking ? 'shake' : null;
-    G.poolPose = { k: kneel, dip, under, shake: shaking, wet: ph > 0.5, hx: tx, hz: tz + 0.82, splash: mode };
+    G.poolPose = { k: kneel, dip, under, shake: shaking, wet: ph > 0.5, hx: tx, hz: tz + 0.78, splash: mode };
     if (!P.splashed && dunk > 0) { P.splashed = true; AU.splash(); AU.bubbles(1.6); }
     if (!P.shook && shaking) { P.shook = true; AU.splash(); say('¡FRESQUITO! Muslera vuelve con la cabeza mojada y las ideas... igual de poco claras.', 'muslera'); }
-    G.cam.override = { focus: { x: tx, y: 0.45 + (1 - kneel) * 0.6, z: tz + 0.6 }, yaw: 0.55 + kneel * 0.15, dist: 3.6 - kneel * 0.4, height: 0.6 + kneel * 0.5 };
+    G.cam.override = { focus: { x: tx, y: 0.4 + (1 - kneel) * 0.6, z: tz + 0.5 }, yaw: 0.7 + kneel * 0.1, dist: 3.4 - kneel * 0.3, height: 0.8 + kneel * 0.6 };
     if (ph >= 1) { G.poolPose = null; startNextRound(); }
   }
 

@@ -66,11 +66,11 @@
   }
 
   // ----------------------------------------------------------- texturas procedurales
-  function grassTexture() {
+  function grassTexture(rep) {
     return canvasTex(512, (ctx, S) => {
       const R = rng(11); ctx.fillStyle = '#2a6f28'; ctx.fillRect(0, 0, S, S);
       for (let i = 0; i < 9000; i++) { const x = R() * S, y = R() * S; ctx.strokeStyle = R() < 0.5 ? `rgba(${90 + R() * 80},${190 + R() * 50},${70 + R() * 50},0.5)` : `rgba(0,${30 + R() * 40},0,0.45)`; ctx.lineWidth = 1 + R(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R() - 0.5) * 3, y - 3 - R() * 5); ctx.stroke(); }
-    }, 10, 10);
+    }, rep || 10, rep || 10);
   }
   function panelTexture() {
     return canvasTex(256, (ctx, S) => {
@@ -118,6 +118,21 @@
       ctx.fillStyle = '#cdbb96'; ctx.fillRect(0, 0, S, S); ctx.strokeStyle = 'rgba(80,60,40,0.35)'; ctx.lineWidth = 3;
       for (let i = 0; i <= S; i += S / 2) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
     }, 8, 8);
+  }
+  function poolTileTexture() {
+    return canvasTex(256, (ctx, S) => {
+      ctx.fillStyle = '#9fd6e8'; ctx.fillRect(0, 0, S, S); ctx.strokeStyle = '#6fb6cf'; ctx.lineWidth = 3;
+      for (let i = 0; i <= S; i += S / 4) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
+      const R = rng(17); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 4;
+      for (let i = 0; i < 14; i++) { const x = R() * S, y = R() * S; ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x + 30, y - 20, x + 60, y + 20, x + 90, y); ctx.stroke(); }
+    }, 6, 4);
+  }
+  function animateWater(t) {
+    const w = R3.water; if (!w) return;
+    const pos = w.geometry.attributes.position, base = R3.waterBase;
+    for (let i = 0; i < pos.count; i++) { const x = base[i * 3], z = base[i * 3 + 2]; pos.array[i * 3 + 1] = 0.028 * Math.sin(x * 2.6 + t * 1.8) + 0.02 * Math.sin(z * 3.4 - t * 2.3 + x) + 0.012 * Math.sin((x + z) * 5 + t * 3.1); }
+    pos.needsUpdate = true; w.geometry.computeVertexNormals();
+    w.material.map.offset.set(t * 0.012, Math.sin(t * 0.4) * 0.01);
   }
   let shadowTex = null;
   function faceTexture(key, face, wet) {
@@ -361,7 +376,11 @@
     const inner = new THREE.PointLight('#ffe8c0', 0.6, 9, 2); inner.position.set(4.4, 1.8, -1.0); S.add(inner);
     const poolLight = new THREE.PointLight('#7fd0ff', 1.0, 9, 2); poolLight.position.set(4.8, 0.6, 5.5); S.add(poolLight);
     // césped
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), lam('#ffffff', { map: grassTexture() })); ground.rotation.x = -Math.PI / 2; ground.position.set(4.8, 0, 0); ground.receiveShadow = true; S.add(ground);
+    // césped con un hueco para la piscina (coordenadas: x, -z)
+    const gShape = new THREE.Shape(); gShape.moveTo(-15.2, -20); gShape.lineTo(24.8, -20); gShape.lineTo(24.8, 20); gShape.lineTo(-15.2, 20); gShape.closePath();
+    const gHole = new THREE.Path(); gHole.moveTo(1.1, -9.05); gHole.lineTo(8.1, -9.05); gHole.lineTo(8.1, -4.05); gHole.lineTo(1.1, -4.05); gHole.closePath(); gShape.holes.push(gHole);
+    const gGeo = new THREE.ShapeGeometry(gShape); gGeo.rotateX(-Math.PI / 2);
+    const ground = new THREE.Mesh(gGeo, lam('#ffffff', { map: grassTexture(0.25) })); ground.receiveShadow = true; S.add(ground);
     // pavimento delante de la casa
     const pav = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.6), lam('#ffffff', { map: tileTexture() })); pav.rotation.x = -Math.PI / 2; pav.position.set(8.6, 0.005, -1.0); pav.receiveShadow = true; S.add(pav);
     // tapia de piedra al fondo
@@ -403,15 +422,20 @@
     const copingL = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 5.2), lam('#ffffff', { map: tileTexture() })); copingL.rotation.x = -Math.PI / 2; copingL.position.set(0.7, 0.012, 6.6); S.add(copingL);
     const copingR = copingL.clone(); copingR.position.x = 8.5; S.add(copingR);
     const edge = box(8.6, 0.1, 0.1, lam('#b5a07c'), S); edge.position.set(4.6, 0.05, 4.0);
-    const waterMat = new THREE.MeshLambertMaterial({ map: waterTexture(), transparent: true, opacity: 0.8, color: '#2aa7d6' });
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), waterMat); water.rotation.x = -Math.PI / 2; water.position.set(4.6, -0.06, 6.55); S.add(water); R3.water = water;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), lam('#0b4f86')); floor.rotation.x = -Math.PI / 2; floor.position.set(4.6, -1.4, 6.55); S.add(floor);
-    for (const [x, z, w, dp] of [[4.6, 4.05, 7.0, 0.1], [4.6, 9.05, 7.0, 0.1], [1.1, 6.55, 0.1, 5.0], [8.1, 6.55, 0.1, 5.0]]) { const wb = box(w, 1.5, dp, lam('#9fd0e8'), S); wb.position.set(x, -0.7, z); }
-    // valla de madera al fondo (+z)
+    const poolTile = lam('#ffffff', { map: poolTileTexture() });
+    const waterGeo = new THREE.PlaneGeometry(7.0, 5.0, 36, 26); waterGeo.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshPhongMaterial({ color: '#3fbbe9', specular: '#e8fbff', shininess: 70, transparent: true, opacity: 0.58, map: waterTexture(), depthWrite: false });
+    const water = new THREE.Mesh(waterGeo, waterMat); water.position.set(4.6, -0.05, 6.55); water.renderOrder = 2; S.add(water); R3.water = water; R3.waterBase = waterGeo.attributes.position.array.slice();
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), poolTile); floor.rotation.x = -Math.PI / 2; floor.position.set(4.6, -1.5, 6.55); floor.receiveShadow = true; S.add(floor);
+    for (const [x, z, w, dp] of [[4.6, 4.05, 7.0, 0.1], [4.6, 9.05, 7.0, 0.1], [1.1, 6.55, 0.1, 5.0], [8.1, 6.55, 0.1, 5.0]]) { const wb = box(w, 1.6, dp, poolTile, S); wb.position.set(x, -0.75, z); }
+    const copingFar = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 0.8), lam('#ffffff', { map: tileTexture() })); copingFar.rotation.x = -Math.PI / 2; copingFar.position.set(4.6, 0.012, 9.45); S.add(copingFar);
+    const waterline = box(7.0, 0.04, 0.03, lam('#eaf8ff', { emissive: '#8fd8ff', emissiveIntensity: 0.4 }), S); waterline.position.set(4.6, 0.0, 4.06); waterline.castShadow = false;
+    const poolSpot = new THREE.PointLight('#bfefff', 1.4, 9, 2); poolSpot.position.set(4.6, 1.6, 6.5); S.add(poolSpot);
+    // valla de madera al fondo (+z), lejos para que la cámara nunca la atraviese
     const fenceMat = lam('#6b4a2b');
-    for (let i = 0; i < 24; i++) { const pl = box(0.16, 1.8, 0.04, fenceMat, S); pl.position.set(0.5 + i * 0.38, 0.9, 9.6); }
-    const fenceRail = box(9.2, 0.08, 0.05, fenceMat, S); fenceRail.position.set(4.8, 1.5, 9.62);
-    for (let i = 0; i < 16; i++) { const x = 0.6 + i * 0.56, y = 1.9 + Math.sin(i * 0.9) * 0.1; const b = sphere(0.035, bulb, S, 6); b.position.set(x, y, 9.5); b.castShadow = false; glow('#ffd990', 0.36, x, y, 9.45); }
+    for (let i = 0; i < 24; i++) { const pl = box(0.16, 1.8, 0.04, fenceMat, S); pl.position.set(0.5 + i * 0.38, 0.9, 13.2); }
+    const fenceRail = box(9.2, 0.08, 0.05, fenceMat, S); fenceRail.position.set(4.8, 1.5, 13.22);
+    for (let i = 0; i < 16; i++) { const x = 0.6 + i * 0.56, y = 1.9 + Math.sin(i * 0.9) * 0.1; const b = sphere(0.035, bulb, S, 6); b.position.set(x, y, 13.1); b.castShadow = false; glow('#ffd990', 0.36, x, y, 13.05); }
     // estrellas y luna
     const starGeo = new THREE.BufferGeometry(); const sp = []; const R2 = rng(33);
     for (let i = 0; i < 260; i++) { const a = R2() * Math.PI * 2, r = 14 + R2() * 6; sp.push(4.8 + Math.cos(a) * r, 5 + R2() * 9, 1 + Math.sin(a) * r); }
@@ -419,8 +443,8 @@
     S.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: '#e9edff', size: 0.07 })));
     const moon = sphere(0.3, new THREE.MeshBasicMaterial({ color: '#fff3d0' }), S, 10); moon.position.set(5.6, 8.5, -11); glow('#ffe9b8', 3.6, 5.6, 8.5, -10.9);
     // ropa tirada y chanclas
-    for (const [x, z, sx, sz, c] of [[4.7, 2.3, 0.5, 0.3, '#e8e1d2'], [5.0, 2.45, 0.4, 0.25, '#5577aa'], [4.45, 2.5, 0.3, 0.2, '#d9d0c0'], [6.5, 2.5, 0.35, 0.2, '#c8c0b0'], [3.0, 2.3, 0.16, 0.08, '#222'], [3.2, 2.35, 0.16, 0.08, '#222']]) { const m = sphere(0.1, lam(c), S, 8); m.position.set(x, 0.03, z); m.scale.set(sx * 2, 0.35, sz * 2); m.castShadow = false; }
-    const chair = buildChair(); chair.position.set(7.4, 0, 2.3); chair.rotation.y = -0.8; S.add(chair);
+    for (const [x, z, sx, sz, c] of [[4.7, 3.0, 0.5, 0.3, '#e8e1d2'], [5.0, 3.1, 0.4, 0.25, '#5577aa'], [4.45, 3.05, 0.3, 0.2, '#d9d0c0'], [6.5, 3.0, 0.35, 0.2, '#c8c0b0'], [3.0, 3.0, 0.16, 0.08, '#222'], [3.2, 3.05, 0.16, 0.08, '#222']]) { const m = sphere(0.1, lam(c), S, 8); m.position.set(x, 0.03, z); m.scale.set(sx * 2, 0.35, sz * 2); m.castShadow = false; }
+    const chair = buildChair(); chair.position.set(1.0, 0, 9.8); chair.rotation.y = 0.7; S.add(chair);
     for (const p of D.CROWD) { const g = buildCrowdPerson(p); R3.crowd.push(g); S.add(g); }
   }
   function buildChair() {
@@ -463,7 +487,7 @@
       r.setPixelRatio(Math.min(window.devicePixelRatio || 1, R3.mobile ? 1.5 : 2));
       r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.outputEncoding = THREE.sRGBEncoding;
       r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.82;
-      R3.renderer = r; R3.scene = new THREE.Scene(); R3.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 80);
+      R3.renderer = r; R3.scene = new THREE.Scene(); R3.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 80);
       buildWorld(); buildSplash();
       for (const key of ['muslera', 'oscar']) { R3.rigs[key] = new Rig(key); R3.anims[key] = new root.TSM_ANIM.Animator(key); R3.scene.add(R3.rigs[key].group); R3.scene.add(R3.rigs[key].blob); R3.scene.add(R3.rigs[key].trailGroup); R3.rigs[key].group.visible = R3.rigs[key].blob.visible = false; }
       R3.ready = true; return true;
@@ -476,7 +500,7 @@
     if (!R3.ready) return;
     const cam = R3.camera, sim = fr.sim, dt = fr.dt || 0.016;
     animateCrowd(fr.t, fr.excite, fr.cheer);
-    if (R3.water) R3.water.material.map.offset.set(fr.t * 0.01, Math.sin(fr.t * 0.4) * 0.01);
+    animateWater(fr.t);
     const show = !!sim && ['fight', 'intro', 'over', 'corner', 'pool'].includes(fr.screen);
     for (const key of ['muslera', 'oscar']) {
       const rig = R3.rigs[key]; rig.group.visible = rig.blob.visible = rig.trailGroup.visible = show;
@@ -495,18 +519,26 @@
       const p = sim.p, o = sim.o;
       const mx = (p.x + o.x) / 2, mz = (p.z + o.z) / 2; let dx = o.x - p.x, dz = o.z - p.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
       let nx = -dz, nz = dx; if (nz < 0) { nx = -nx; nz = -nz; }   // la cámara nunca pasa detrás de la carpa
-      yaw = clamp(Math.atan2(nz, nx), Math.PI / 2 - 0.55, Math.PI / 2 + 0.55);   // el jardín es estrecho: vista casi frontal
+      yaw = clamp(Math.atan2(nz, nx), Math.PI / 2 - 0.4, Math.PI / 2 + 0.4);   // el jardín es estrecho: vista casi frontal
       const portrait = aspect < 1;
       const need = Math.max(portrait ? 3.0 : 5.0, d + (portrait ? 1.8 : 3.4));
       const distH = (need / 2) / tanH, distV = ((portrait ? 4.2 : 4.6) / 2) / tanV;
-      dist = Math.min(Math.max(distH, distV) * (fr.zoom || 1), 8.4);
+      dist = Math.min(Math.max(distH, distV) * (fr.zoom || 1), portrait ? 8.0 : 7.0);
       fx = mx; fz = mz; fy = 1.1 + Math.max(p.y, o.y) * 0.3; height = 0.45 + dist * 0.07;
+      // pegados al seto o a la casa, el encuadre se desplaza hacia el jardín
+      if (mx < 2.4) fx = mx + (2.4 - mx) * 0.5; else if (mx > 6.1) fx = mx - (mx - 6.1) * 0.5;
+      // el giro lateral se reduce cerca del seto o de la casa para que la cámara se quede entre ambos
+      const lo = clamp((1.3 - fx) / dist, -0.39, 0.39), hi = clamp((7.2 - fx) / dist, -0.39, 0.39);
+      yaw = Math.acos(clamp(Math.cos(yaw), lo, hi));
     } else { yaw = Math.PI / 2 + Math.sin(fr.t * 0.15) * 0.5; dist = 8; fx = 4.8; fz = 0.3; fy = 1.1; height = 1.4; }
     const k = fr.snap ? 1 : 1 - Math.pow(0.0008, dt);
     const c = R3.cam;
     c.yaw = lerp(c.yaw, yaw, k * 0.8); c.dist = lerp(c.dist, dist, k * 0.7); c.fx = lerp(c.fx, fx, k); c.fy = lerp(c.fy, fy, k); c.fz = lerp(c.fz, fz, k);
     const sh = (fr.shake || 0) * 0.006;
-    cam.position.set(c.fx + Math.cos(c.yaw) * c.dist + (Math.random() - 0.5) * sh, c.fy + height + (Math.random() - 0.5) * sh, c.fz + Math.sin(c.yaw) * c.dist);
+    // la cámara nunca sale del jardín: ni dentro del seto, ni dentro de la casa, ni detrás de la valla
+    let cx = c.fx + Math.cos(c.yaw) * c.dist, cz = c.fz + Math.sin(c.yaw) * c.dist;
+    if (!fr.cam) { cx = clamp(cx, 0.75, 7.8); cz = clamp(cz, c.fz + 2.5, 12.2); }
+    cam.position.set(cx + (Math.random() - 0.5) * sh, c.fy + height + (Math.random() - 0.5) * sh, cz);
     cam.lookAt(c.fx, c.fy, c.fz);
     R3.lights.key.target.position.set(c.fx, 0, c.fz);
     R3.renderer.render(R3.scene, cam);

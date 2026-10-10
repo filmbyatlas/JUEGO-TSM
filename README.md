@@ -2,7 +2,7 @@
 
 Juego de boxeo del grupo **KLK**. Controlas a **Muslera** (guantes rosas, guardia baja, no hace boxeo) e intentas ganarle a **Oscar** (guantes turquesa, guardia alta, sí hace boxeo). Tres asaltos de un minuto en el césped de la casa rural, con el público sentado, el perro, y la piscina para refrescarse entre asaltos.
 
-Está pensado para que ganar sea difícil pero entretenido: en simulaciones, sin cinturones un jugador normal le gana a Oscar una de cada cinco veces. Con cada cinturón Oscar se pone un poco más serio (con el cinturón negro, un jugador normal gana una de cada doce).
+Está pensado para que ganar sea difícil pero entretenido: en simulaciones, sin cinturones un jugador normal le gana a Oscar algo más de una de cada cuatro veces. Con cada cinturón Oscar se pone un poco más serio (con el cinturón negro, un jugador normal gana una de cada seis).
 
 ## Jugar
 
@@ -45,7 +45,7 @@ El movimiento es relativo a la pantalla: izquierda y derecha rodean al rival, ar
 Durante la pelea salen bocadillos (y voz sintetizada en español, desactivable con el botón 🗣️) con frases reales de los dos:
 
 - Muslera: "Yo te puedo hablar en francés: como tú tapel, yo llameg Musler", "Un gordo en un súper es un súper gordo", "¡Y se la metí por detrás, por el culo, anal!" (cuando tumba a Oscar), "¿Bajas tío? Eh eh eh eh ¿bajas?" (con Oscar en el suelo o tras una contra).
-- Oscar: "Compra BTC, bro", "Especular e invertir no es lo mismo, bro", "Soy Dios" (cuando tumba a Muslera), "¡Maritocracia!" (uppercuts y combos), "¡Viva Trump!" (cuando vacila).
+- Oscar: "Compra BTC, bro", "Especular e invertir no es lo mismo, bro", "Soy Dios" (cuando tumba a Muslera), "¡Meritocracia!" (uppercuts y combos), "¡Viva Trump!" (cuando vacila).
 
 ## Desarrollo
 

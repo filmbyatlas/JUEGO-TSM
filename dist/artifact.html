@@ -283,7 +283,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
 (function (root) {
   'use strict';
 
-  const ARENA = { x0: 1.5, x1: 8.1, z0: -0.85, z1: 1.75, minSep: 0.95 };
+  const ARENA = { x0: 0.95, x1: 7.55, z0: -0.6, z1: 2.7, minSep: 0.95 };
   const ROUND_TIME = 60;
   const ROUNDS = 3;
   const GRAVITY = 13.5;
@@ -292,9 +292,9 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
   // windup / active / recover en segundos; dmg; reach (m); stam; stun; push (m); high = pasa por encima si el otro está agachado
   const MOVES = {
     muslera: {
-      jab:   { windup: 0.17, active: 0.08, recover: 0.30, dmg: 5,  reach: 1.28, stam: 5,  stun: 0.34, push: 0.14, high: true },
-      cross: { windup: 0.26, active: 0.10, recover: 0.42, dmg: 9,  reach: 1.34, stam: 9,  stun: 0.46, push: 0.20, high: true },
-      upper: { windup: 0.21, active: 0.10, recover: 0.55, dmg: 15, reach: 1.08, stam: 14, stun: 0.62, push: 0.26, high: false },
+      jab:   { windup: 0.16, active: 0.08, recover: 0.24, dmg: 5,  reach: 1.28, stam: 6,  stun: 0.34, push: 0.14, high: true },
+      cross: { windup: 0.24, active: 0.10, recover: 0.34, dmg: 9,  reach: 1.34, stam: 10, stun: 0.46, push: 0.20, high: true },
+      upper: { windup: 0.21, active: 0.10, recover: 0.46, dmg: 15, reach: 1.08, stam: 15, stun: 0.62, push: 0.26, high: false },
       fly:   { windup: 0.10, active: 0.60, recover: 0.50, dmg: 16, reach: 1.15, stam: 16, stun: 0.70, push: 0.40, high: true, air: true },
     },
     oscar: {
@@ -309,28 +309,28 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     muslera: {
       name: 'MUSLERA', alias: 'EL PUEBLO', guard: 'low',
       hp: 100, stamina: 100,
-      walk: 1.55, back: 1.25, strafe: 1.2,
-      blockStartup: 0.16, blockReduce: 0.55, blockStamCost: 9,
-      dodgeDur: 0.36, dodgeInv: [0.04, 0.30], dodgeCost: 8, dodgeCooldown: 0.55,
-      jumpVel: 4.4, jumpCost: 10,
-      regenIdle: 13, regenWalk: 7,
+      walk: 2.1, back: 1.7, strafe: 1.7,
+      blockStartup: 0.16, blockReduce: 0.55, blockStamCost: 8,
+      dodgeDur: 0.32, dodgeInv: [0.03, 0.27], dodgeCost: 7, dodgeCooldown: 0.4,
+      jumpVel: 4.8, jumpCost: 8,
+      regenIdle: 14, regenWalk: 8,
       riseHp: [42, 32, 0],
     },
     oscar: {
       name: 'OSCAR', alias: 'EL CAMPEÓN', guard: 'high',
       hp: 100, stamina: 100,
-      walk: 1.55, back: 1.35, strafe: 1.25,
+      walk: 2.0, back: 1.75, strafe: 1.7,
       blockStartup: 0.0, blockReduce: 0.85, blockStamCost: 5,
       dodgeDur: 0.30, dodgeInv: [0.02, 0.26], dodgeCost: 6, dodgeCooldown: 0.45,
-      jumpVel: 4.4, jumpCost: 10,
-      regenIdle: 15, regenWalk: 8,
+      jumpVel: 4.8, jumpCost: 8,
+      regenIdle: 14, regenWalk: 8,
       riseHp: [36, 26, 0],
     },
   };
 
   // parámetros de la IA según dificultad (0 = sin cinturones, 1 = cinturón negro)
-  const AI_EASY = { reactJab: 0.47, reactHeavy: 0.71, reactDelay: 0.12, aggression: 0.9, comboBreak: 0.85, tauntEvery: [12, 19], tauntDur: 1.0, preferDodge: 0.25, dmgScale: 0.62, globalDmg: 0.7, followUp: 0.4, cooldownMin: 1.4, cooldownRand: 1.3, airPunish: 0.48, duckPunish: 0.42, jumpRate: 0.025, strafeRate: 0.35, spamRead: 0.18 };
-  const AI_HARD = { reactJab: 0.5, reactHeavy: 0.72, reactDelay: 0.115, aggression: 0.95, comboBreak: 0.87, tauntEvery: [13, 21], tauntDur: 0.95, preferDodge: 0.28, dmgScale: 0.66, globalDmg: 0.7, followUp: 0.42, cooldownMin: 1.4, cooldownRand: 1.3, airPunish: 0.6, duckPunish: 0.55, jumpRate: 0.03, strafeRate: 0.4, spamRead: 0.19 };
+  const AI_EASY = { reactJab: 0.6, reactHeavy: 0.8, reactDelay: 0.12, aggression: 0.95, comboBreak: 0.85, tauntEvery: [12, 19], tauntDur: 1.0, preferDodge: 0.25, dmgScale: 0.6, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.5, duckPunish: 0.45, jumpRate: 0.025, strafeRate: 0.4, spamRead: 0.2 };
+  const AI_HARD = { reactJab: 0.63, reactHeavy: 0.82, reactDelay: 0.118, aggression: 0.95, comboBreak: 0.86, tauntEvery: [13, 21], tauntDur: 0.97, preferDodge: 0.27, dmgScale: 0.62, globalDmg: 0.7, followUp: 0.47, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.56, duckPunish: 0.5, jumpRate: 0.028, strafeRate: 0.42, spamRead: 0.22 };
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -423,7 +423,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       this.time += dt; this.phaseT += dt;
       const p = this.p, o = this.o;
       switch (this.phase) {
-        case 'ready': this.stepPassive(dt); if (this.phaseT > 1.6) { this.phase = 'fight'; this.phaseT = 0; this.emit('bell', { kind: 'start' }); } break;
+        case 'ready': this.stepPassive(dt); if (this.phaseT > 1.3) { this.phase = 'fight'; this.phaseT = 0; this.emit('bell', { kind: 'start' }); } break;
         case 'fight': this.roundT -= dt; this.totalFightTime += dt; this.stepFighters(dt, input); if (this.roundT <= 0 && this.phase === 'fight') this.endRound(); break;
         case 'count': this.stepCount(dt, input); break;
         case 'roundEnd': this.stepFighters(dt, {}); if (this.phaseT > 2.2) { this.phase = 'break'; this.phaseT = 0; this.emit('break', { round: this.round }); } break;
@@ -718,7 +718,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
 
       // --- 1. Reacción a los golpes del jugador
       if (p.move && p.phase === 'windup' && b.seenAttack !== p.move) {
-        b.seenAttack = p.move;
+        b.seenAttack = p.move; b.lastSwing = this.time;
         const heavy = p.state !== 'jab';
         let pr = heavy ? A.reactHeavy : A.reactJab;
         b.recent = b.recent.concat(p.state).slice(-3);
@@ -786,7 +786,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       if (p.state === 'down') { it.approach = -1; return it; }
 
       // --- 8. Salto ocasional desde media distancia (puñetazo volador telegrafiado)
-      if (dist > 1.5 && dist < 2.3 && !p.move && b.cooldown <= 0 && this.rng() < A.jumpRate * dt * 4.8) { it.jump = true; it.approach = 1; b.cooldown = 1.6; return it; }
+      if (dist > 1.5 && dist < 2.3 && !p.move && b.cooldown <= 0 && this.time - (b.lastSwing || -9) > 1.5 && this.rng() < A.jumpRate * dt * 4.8) { it.jump = true; it.approach = 1; b.cooldown = 1.6; return it; }
 
       // --- 9. Decidir un nuevo combo
       if (b.cooldown <= 0 && !o.move && dist <= 1.5) {
@@ -1821,7 +1821,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       // cinemática de la piscina: se arrodilla y mete la cabeza
       if (opts && opts.pool) {
         const P = opts.pool, k = P.k, dip = P.dip;
-        T.lean = 0.08 + k * 1.45 + dip * 0.7; T.crouch = 0.02 + k * 0.66; T.twist = 0; T.sway = 0;
+        T.lean = 0.08 + k * 1.5 + dip * 0.8; T.crouch = 0.02 + k * 0.66 + dip * 0.12; T.twist = 0; T.sway = 0;
         T.headTilt = (P.shake ? Math.sin(t * 28) * 0.3 : 0) + k * 0.4; T.headYaw = P.shake ? Math.sin(t * 22) * 0.3 : 0; T.headX = 0; T.headY = 0;
         T.leadX = 0.6 + k * 0.25; T.leadY = 1.0 - k * 0.55; T.leadZ = -0.26; T.rearX = 0.5 + k * 0.25; T.rearY = 0.95 - k * 0.55; T.rearZ = 0.26; T.elbowOut = 0.1;
         T.footFX = 0.3; T.footBX = -0.22 - k * 0.42; T.footFY = 0; T.footBY = 0; T.mouth = P.under ? 0 : 0.4; T.lying = 0;
@@ -1953,11 +1953,11 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
   }
 
   // ----------------------------------------------------------- texturas procedurales
-  function grassTexture() {
+  function grassTexture(rep) {
     return canvasTex(512, (ctx, S) => {
       const R = rng(11); ctx.fillStyle = '#2a6f28'; ctx.fillRect(0, 0, S, S);
       for (let i = 0; i < 9000; i++) { const x = R() * S, y = R() * S; ctx.strokeStyle = R() < 0.5 ? `rgba(${90 + R() * 80},${190 + R() * 50},${70 + R() * 50},0.5)` : `rgba(0,${30 + R() * 40},0,0.45)`; ctx.lineWidth = 1 + R(); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + (R() - 0.5) * 3, y - 3 - R() * 5); ctx.stroke(); }
-    }, 10, 10);
+    }, rep || 10, rep || 10);
   }
   function panelTexture() {
     return canvasTex(256, (ctx, S) => {
@@ -2005,6 +2005,21 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       ctx.fillStyle = '#cdbb96'; ctx.fillRect(0, 0, S, S); ctx.strokeStyle = 'rgba(80,60,40,0.35)'; ctx.lineWidth = 3;
       for (let i = 0; i <= S; i += S / 2) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
     }, 8, 8);
+  }
+  function poolTileTexture() {
+    return canvasTex(256, (ctx, S) => {
+      ctx.fillStyle = '#9fd6e8'; ctx.fillRect(0, 0, S, S); ctx.strokeStyle = '#6fb6cf'; ctx.lineWidth = 3;
+      for (let i = 0; i <= S; i += S / 4) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, S); ctx.moveTo(0, i); ctx.lineTo(S, i); ctx.stroke(); }
+      const R = rng(17); ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 4;
+      for (let i = 0; i < 14; i++) { const x = R() * S, y = R() * S; ctx.beginPath(); ctx.moveTo(x, y); ctx.bezierCurveTo(x + 30, y - 20, x + 60, y + 20, x + 90, y); ctx.stroke(); }
+    }, 6, 4);
+  }
+  function animateWater(t) {
+    const w = R3.water; if (!w) return;
+    const pos = w.geometry.attributes.position, base = R3.waterBase;
+    for (let i = 0; i < pos.count; i++) { const x = base[i * 3], z = base[i * 3 + 2]; pos.array[i * 3 + 1] = 0.028 * Math.sin(x * 2.6 + t * 1.8) + 0.02 * Math.sin(z * 3.4 - t * 2.3 + x) + 0.012 * Math.sin((x + z) * 5 + t * 3.1); }
+    pos.needsUpdate = true; w.geometry.computeVertexNormals();
+    w.material.map.offset.set(t * 0.012, Math.sin(t * 0.4) * 0.01);
   }
   let shadowTex = null;
   function faceTexture(key, face, wet) {
@@ -2248,7 +2263,11 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     const inner = new THREE.PointLight('#ffe8c0', 0.6, 9, 2); inner.position.set(4.4, 1.8, -1.0); S.add(inner);
     const poolLight = new THREE.PointLight('#7fd0ff', 1.0, 9, 2); poolLight.position.set(4.8, 0.6, 5.5); S.add(poolLight);
     // césped
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), lam('#ffffff', { map: grassTexture() })); ground.rotation.x = -Math.PI / 2; ground.position.set(4.8, 0, 0); ground.receiveShadow = true; S.add(ground);
+    // césped con un hueco para la piscina (coordenadas: x, -z)
+    const gShape = new THREE.Shape(); gShape.moveTo(-15.2, -20); gShape.lineTo(24.8, -20); gShape.lineTo(24.8, 20); gShape.lineTo(-15.2, 20); gShape.closePath();
+    const gHole = new THREE.Path(); gHole.moveTo(1.1, -9.05); gHole.lineTo(8.1, -9.05); gHole.lineTo(8.1, -4.05); gHole.lineTo(1.1, -4.05); gHole.closePath(); gShape.holes.push(gHole);
+    const gGeo = new THREE.ShapeGeometry(gShape); gGeo.rotateX(-Math.PI / 2);
+    const ground = new THREE.Mesh(gGeo, lam('#ffffff', { map: grassTexture(0.25) })); ground.receiveShadow = true; S.add(ground);
     // pavimento delante de la casa
     const pav = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.6), lam('#ffffff', { map: tileTexture() })); pav.rotation.x = -Math.PI / 2; pav.position.set(8.6, 0.005, -1.0); pav.receiveShadow = true; S.add(pav);
     // tapia de piedra al fondo
@@ -2290,15 +2309,20 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     const copingL = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 5.2), lam('#ffffff', { map: tileTexture() })); copingL.rotation.x = -Math.PI / 2; copingL.position.set(0.7, 0.012, 6.6); S.add(copingL);
     const copingR = copingL.clone(); copingR.position.x = 8.5; S.add(copingR);
     const edge = box(8.6, 0.1, 0.1, lam('#b5a07c'), S); edge.position.set(4.6, 0.05, 4.0);
-    const waterMat = new THREE.MeshLambertMaterial({ map: waterTexture(), transparent: true, opacity: 0.8, color: '#2aa7d6' });
-    const water = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), waterMat); water.rotation.x = -Math.PI / 2; water.position.set(4.6, -0.06, 6.55); S.add(water); R3.water = water;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), lam('#0b4f86')); floor.rotation.x = -Math.PI / 2; floor.position.set(4.6, -1.4, 6.55); S.add(floor);
-    for (const [x, z, w, dp] of [[4.6, 4.05, 7.0, 0.1], [4.6, 9.05, 7.0, 0.1], [1.1, 6.55, 0.1, 5.0], [8.1, 6.55, 0.1, 5.0]]) { const wb = box(w, 1.5, dp, lam('#9fd0e8'), S); wb.position.set(x, -0.7, z); }
-    // valla de madera al fondo (+z)
+    const poolTile = lam('#ffffff', { map: poolTileTexture() });
+    const waterGeo = new THREE.PlaneGeometry(7.0, 5.0, 36, 26); waterGeo.rotateX(-Math.PI / 2);
+    const waterMat = new THREE.MeshPhongMaterial({ color: '#3fbbe9', specular: '#e8fbff', shininess: 70, transparent: true, opacity: 0.58, map: waterTexture(), depthWrite: false });
+    const water = new THREE.Mesh(waterGeo, waterMat); water.position.set(4.6, -0.05, 6.55); water.renderOrder = 2; S.add(water); R3.water = water; R3.waterBase = waterGeo.attributes.position.array.slice();
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7.0, 5.0), poolTile); floor.rotation.x = -Math.PI / 2; floor.position.set(4.6, -1.5, 6.55); floor.receiveShadow = true; S.add(floor);
+    for (const [x, z, w, dp] of [[4.6, 4.05, 7.0, 0.1], [4.6, 9.05, 7.0, 0.1], [1.1, 6.55, 0.1, 5.0], [8.1, 6.55, 0.1, 5.0]]) { const wb = box(w, 1.6, dp, poolTile, S); wb.position.set(x, -0.75, z); }
+    const copingFar = new THREE.Mesh(new THREE.PlaneGeometry(8.6, 0.8), lam('#ffffff', { map: tileTexture() })); copingFar.rotation.x = -Math.PI / 2; copingFar.position.set(4.6, 0.012, 9.45); S.add(copingFar);
+    const waterline = box(7.0, 0.04, 0.03, lam('#eaf8ff', { emissive: '#8fd8ff', emissiveIntensity: 0.4 }), S); waterline.position.set(4.6, 0.0, 4.06); waterline.castShadow = false;
+    const poolSpot = new THREE.PointLight('#bfefff', 1.4, 9, 2); poolSpot.position.set(4.6, 1.6, 6.5); S.add(poolSpot);
+    // valla de madera al fondo (+z), lejos para que la cámara nunca la atraviese
     const fenceMat = lam('#6b4a2b');
-    for (let i = 0; i < 24; i++) { const pl = box(0.16, 1.8, 0.04, fenceMat, S); pl.position.set(0.5 + i * 0.38, 0.9, 9.6); }
-    const fenceRail = box(9.2, 0.08, 0.05, fenceMat, S); fenceRail.position.set(4.8, 1.5, 9.62);
-    for (let i = 0; i < 16; i++) { const x = 0.6 + i * 0.56, y = 1.9 + Math.sin(i * 0.9) * 0.1; const b = sphere(0.035, bulb, S, 6); b.position.set(x, y, 9.5); b.castShadow = false; glow('#ffd990', 0.36, x, y, 9.45); }
+    for (let i = 0; i < 24; i++) { const pl = box(0.16, 1.8, 0.04, fenceMat, S); pl.position.set(0.5 + i * 0.38, 0.9, 13.2); }
+    const fenceRail = box(9.2, 0.08, 0.05, fenceMat, S); fenceRail.position.set(4.8, 1.5, 13.22);
+    for (let i = 0; i < 16; i++) { const x = 0.6 + i * 0.56, y = 1.9 + Math.sin(i * 0.9) * 0.1; const b = sphere(0.035, bulb, S, 6); b.position.set(x, y, 13.1); b.castShadow = false; glow('#ffd990', 0.36, x, y, 13.05); }
     // estrellas y luna
     const starGeo = new THREE.BufferGeometry(); const sp = []; const R2 = rng(33);
     for (let i = 0; i < 260; i++) { const a = R2() * Math.PI * 2, r = 14 + R2() * 6; sp.push(4.8 + Math.cos(a) * r, 5 + R2() * 9, 1 + Math.sin(a) * r); }
@@ -2306,8 +2330,8 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     S.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: '#e9edff', size: 0.07 })));
     const moon = sphere(0.3, new THREE.MeshBasicMaterial({ color: '#fff3d0' }), S, 10); moon.position.set(5.6, 8.5, -11); glow('#ffe9b8', 3.6, 5.6, 8.5, -10.9);
     // ropa tirada y chanclas
-    for (const [x, z, sx, sz, c] of [[4.7, 2.3, 0.5, 0.3, '#e8e1d2'], [5.0, 2.45, 0.4, 0.25, '#5577aa'], [4.45, 2.5, 0.3, 0.2, '#d9d0c0'], [6.5, 2.5, 0.35, 0.2, '#c8c0b0'], [3.0, 2.3, 0.16, 0.08, '#222'], [3.2, 2.35, 0.16, 0.08, '#222']]) { const m = sphere(0.1, lam(c), S, 8); m.position.set(x, 0.03, z); m.scale.set(sx * 2, 0.35, sz * 2); m.castShadow = false; }
-    const chair = buildChair(); chair.position.set(7.4, 0, 2.3); chair.rotation.y = -0.8; S.add(chair);
+    for (const [x, z, sx, sz, c] of [[4.7, 3.0, 0.5, 0.3, '#e8e1d2'], [5.0, 3.1, 0.4, 0.25, '#5577aa'], [4.45, 3.05, 0.3, 0.2, '#d9d0c0'], [6.5, 3.0, 0.35, 0.2, '#c8c0b0'], [3.0, 3.0, 0.16, 0.08, '#222'], [3.2, 3.05, 0.16, 0.08, '#222']]) { const m = sphere(0.1, lam(c), S, 8); m.position.set(x, 0.03, z); m.scale.set(sx * 2, 0.35, sz * 2); m.castShadow = false; }
+    const chair = buildChair(); chair.position.set(1.0, 0, 9.8); chair.rotation.y = 0.7; S.add(chair);
     for (const p of D.CROWD) { const g = buildCrowdPerson(p); R3.crowd.push(g); S.add(g); }
   }
   function buildChair() {
@@ -2350,7 +2374,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       r.setPixelRatio(Math.min(window.devicePixelRatio || 1, R3.mobile ? 1.5 : 2));
       r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap; r.outputEncoding = THREE.sRGBEncoding;
       r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 0.82;
-      R3.renderer = r; R3.scene = new THREE.Scene(); R3.camera = new THREE.PerspectiveCamera(40, 1, 0.1, 80);
+      R3.renderer = r; R3.scene = new THREE.Scene(); R3.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 80);
       buildWorld(); buildSplash();
       for (const key of ['muslera', 'oscar']) { R3.rigs[key] = new Rig(key); R3.anims[key] = new root.TSM_ANIM.Animator(key); R3.scene.add(R3.rigs[key].group); R3.scene.add(R3.rigs[key].blob); R3.scene.add(R3.rigs[key].trailGroup); R3.rigs[key].group.visible = R3.rigs[key].blob.visible = false; }
       R3.ready = true; return true;
@@ -2363,7 +2387,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     if (!R3.ready) return;
     const cam = R3.camera, sim = fr.sim, dt = fr.dt || 0.016;
     animateCrowd(fr.t, fr.excite, fr.cheer);
-    if (R3.water) R3.water.material.map.offset.set(fr.t * 0.01, Math.sin(fr.t * 0.4) * 0.01);
+    animateWater(fr.t);
     const show = !!sim && ['fight', 'intro', 'over', 'corner', 'pool'].includes(fr.screen);
     for (const key of ['muslera', 'oscar']) {
       const rig = R3.rigs[key]; rig.group.visible = rig.blob.visible = rig.trailGroup.visible = show;
@@ -2382,18 +2406,26 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
       const p = sim.p, o = sim.o;
       const mx = (p.x + o.x) / 2, mz = (p.z + o.z) / 2; let dx = o.x - p.x, dz = o.z - p.z; const d = Math.hypot(dx, dz) || 1; dx /= d; dz /= d;
       let nx = -dz, nz = dx; if (nz < 0) { nx = -nx; nz = -nz; }   // la cámara nunca pasa detrás de la carpa
-      yaw = clamp(Math.atan2(nz, nx), Math.PI / 2 - 0.55, Math.PI / 2 + 0.55);   // el jardín es estrecho: vista casi frontal
+      yaw = clamp(Math.atan2(nz, nx), Math.PI / 2 - 0.4, Math.PI / 2 + 0.4);   // el jardín es estrecho: vista casi frontal
       const portrait = aspect < 1;
       const need = Math.max(portrait ? 3.0 : 5.0, d + (portrait ? 1.8 : 3.4));
       const distH = (need / 2) / tanH, distV = ((portrait ? 4.2 : 4.6) / 2) / tanV;
-      dist = Math.min(Math.max(distH, distV) * (fr.zoom || 1), 8.4);
+      dist = Math.min(Math.max(distH, distV) * (fr.zoom || 1), portrait ? 8.0 : 7.0);
       fx = mx; fz = mz; fy = 1.1 + Math.max(p.y, o.y) * 0.3; height = 0.45 + dist * 0.07;
+      // pegados al seto o a la casa, el encuadre se desplaza hacia el jardín
+      if (mx < 2.4) fx = mx + (2.4 - mx) * 0.5; else if (mx > 6.1) fx = mx - (mx - 6.1) * 0.5;
+      // el giro lateral se reduce cerca del seto o de la casa para que la cámara se quede entre ambos
+      const lo = clamp((1.3 - fx) / dist, -0.39, 0.39), hi = clamp((7.2 - fx) / dist, -0.39, 0.39);
+      yaw = Math.acos(clamp(Math.cos(yaw), lo, hi));
     } else { yaw = Math.PI / 2 + Math.sin(fr.t * 0.15) * 0.5; dist = 8; fx = 4.8; fz = 0.3; fy = 1.1; height = 1.4; }
     const k = fr.snap ? 1 : 1 - Math.pow(0.0008, dt);
     const c = R3.cam;
     c.yaw = lerp(c.yaw, yaw, k * 0.8); c.dist = lerp(c.dist, dist, k * 0.7); c.fx = lerp(c.fx, fx, k); c.fy = lerp(c.fy, fy, k); c.fz = lerp(c.fz, fz, k);
     const sh = (fr.shake || 0) * 0.006;
-    cam.position.set(c.fx + Math.cos(c.yaw) * c.dist + (Math.random() - 0.5) * sh, c.fy + height + (Math.random() - 0.5) * sh, c.fz + Math.sin(c.yaw) * c.dist);
+    // la cámara nunca sale del jardín: ni dentro del seto, ni dentro de la casa, ni detrás de la valla
+    let cx = c.fx + Math.cos(c.yaw) * c.dist, cz = c.fz + Math.sin(c.yaw) * c.dist;
+    if (!fr.cam) { cx = clamp(cx, 0.75, 7.8); cz = clamp(cz, c.fz + 2.5, 12.2); }
+    cam.position.set(cx + (Math.random() - 0.5) * sh, c.fy + height + (Math.random() - 0.5) * sh, cz);
     cam.lookAt(c.fx, c.fy, c.fz);
     R3.lights.key.target.position.set(c.fx, 0, c.fz);
     R3.renderer.render(R3.scene, cam);
@@ -2466,7 +2498,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
   // ----------------------------------------------------------- frases épicas
   const QUOTES = {
     muslera: { frances: 'Yo te puedo hablar en francés: como tú tapel, yo llameg Musler.', gordo: 'Un gordo en un súper es un súper gordo.', anal: '¡Y se la metí por detrás, por el culo, anal!', bajas: '¿Bajas tío? Eh eh eh eh ¿bajas? Eh eh ¿bajas?' },
-    oscar: { btc: 'Compra BTC, bro.', especular: 'Especular e invertir no es lo mismo, bro.', dios: 'Soy Dios.', marito: '¡Maritocracia!', trump: '¡Viva Trump!' },
+    oscar: { btc: 'Compra BTC, bro.', especular: 'Especular e invertir no es lo mismo, bro.', dios: 'Soy Dios.', marito: '¡Meritocracia!', trump: '¡Viva Trump!' },
   };
   function quote(who, key, opts) {
     opts = opts || {};
@@ -2666,7 +2698,7 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     showScreen('none');
     if (choice === 'pool' && !sim.poolUsed) {
       sim.applyBreakChoice('pool'); save.pool++; persist();
-      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 7.2) }; AU.crowd(0.15);
+      G.screen = 'pool'; G.pool = { t: 0, splashed: false, shook: false, healed: true, x0: sim.p.x, z0: sim.p.z, px: clamp(sim.p.x, 2.2, 6.2) }; AU.crowd(0.15);
       say('Muslera se va a la piscina. Entre asaltos. Como un campeón. O como un pato.', 'muslera');
     } else {
       sim.applyBreakChoice('rest');
@@ -2739,7 +2771,8 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
           const byP = e.by === 'muslera';
           if (e.counter) AU.counter(); else AU.punch(e.move === 'fly' ? 'upper' : e.move);
           shake(e.counter ? 14 : (e.move === 'upper' || e.move === 'fly') ? 10 : e.move === 'cross' ? 6 : 3);
-          if (e.counter || e.move === 'upper' || e.move === 'fly') { G.cam.zoom = e.counter ? 0.8 : 0.9; G.cam.zoomT = e.counter ? 0.6 : 0.35; }
+          if (e.counter || e.move === 'upper' || e.move === 'fly') { G.cam.zoom = e.counter ? 0.8 : 0.88; G.cam.zoomT = e.counter ? 0.6 : 0.35; }
+          else if (G.cam.zoomT <= 0) { G.cam.zoom = 0.95; G.cam.zoomT = 0.18; }
           burst(e.x, e.y, e.z, e.counter ? 22 : 10, { color: byP ? '#ffe36b' : '#ffffff', speed: e.counter ? 3.2 : 1.8 });
           G.fx.ring.push({ x: e.x, y: e.y, z: e.z, t: 0, big: e.counter || e.move === 'upper' || e.move === 'fly' });
           const word = e.counter ? '¡CONTRA!' : e.move === 'fly' ? '¡VOLADOR!' : e.move === 'upper' ? pick(['¡UPPER!', '¡GANCHO!']) : pick(['¡PUM!', '¡PAM!', '¡ZAS!', '¡TOMA!', '¡CLONC!']);
@@ -2853,17 +2886,17 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     // Oscar se queda en su esquina
     o.state = 'idle'; o.t += dt; o.x = 6.4; o.z = 0.2;
     // Muslera camina hasta el borde de la piscina
-    const tx = P.px, tz = 3.45;
+    const tx = P.px, tz = 3.78;
     const k = 1 - Math.pow(1 - walkK, 2);
     p.x = lerp(P.x0, tx, k); p.z = lerp(P.z0, tz, k);
     p.yaw = -Math.PI / 2; p.fx = 0; p.fz = 1; p.t += dt;
     const moving = walkK < 1; p.state = moving ? 'walk' : 'idle'; p.moveA = moving ? 1 : 0; p.speed = moving ? 1.4 : 0;
     const dip = dunk - out;
     const mode = (dunk > 0 && dunk < 1) || (out > 0 && out < 1) ? 'splash' : under ? 'under' : shaking ? 'shake' : null;
-    G.poolPose = { k: kneel, dip, under, shake: shaking, wet: ph > 0.5, hx: tx, hz: tz + 0.82, splash: mode };
+    G.poolPose = { k: kneel, dip, under, shake: shaking, wet: ph > 0.5, hx: tx, hz: tz + 0.78, splash: mode };
     if (!P.splashed && dunk > 0) { P.splashed = true; AU.splash(); AU.bubbles(1.6); }
     if (!P.shook && shaking) { P.shook = true; AU.splash(); say('¡FRESQUITO! Muslera vuelve con la cabeza mojada y las ideas... igual de poco claras.', 'muslera'); }
-    G.cam.override = { focus: { x: tx, y: 0.45 + (1 - kneel) * 0.6, z: tz + 0.6 }, yaw: 0.55 + kneel * 0.15, dist: 3.6 - kneel * 0.4, height: 0.6 + kneel * 0.5 };
+    G.cam.override = { focus: { x: tx, y: 0.4 + (1 - kneel) * 0.6, z: tz + 0.5 }, yaw: 0.7 + kneel * 0.1, dist: 3.4 - kneel * 0.3, height: 0.8 + kneel * 0.6 };
     if (ph >= 1) { G.poolPose = null; startNextRound(); }
   }
 

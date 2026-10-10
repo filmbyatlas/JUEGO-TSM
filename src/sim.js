@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
 
-  const ARENA = { x0: 1.5, x1: 8.1, z0: -0.85, z1: 1.75, minSep: 0.95 };
+  const ARENA = { x0: 0.95, x1: 7.55, z0: -0.6, z1: 2.7, minSep: 0.95 };
   const ROUND_TIME = 60;
   const ROUNDS = 3;
   const GRAVITY = 13.5;
@@ -15,9 +15,9 @@
   // windup / active / recover en segundos; dmg; reach (m); stam; stun; push (m); high = pasa por encima si el otro está agachado
   const MOVES = {
     muslera: {
-      jab:   { windup: 0.17, active: 0.08, recover: 0.30, dmg: 5,  reach: 1.28, stam: 5,  stun: 0.34, push: 0.14, high: true },
-      cross: { windup: 0.26, active: 0.10, recover: 0.42, dmg: 9,  reach: 1.34, stam: 9,  stun: 0.46, push: 0.20, high: true },
-      upper: { windup: 0.21, active: 0.10, recover: 0.55, dmg: 15, reach: 1.08, stam: 14, stun: 0.62, push: 0.26, high: false },
+      jab:   { windup: 0.16, active: 0.08, recover: 0.24, dmg: 5,  reach: 1.28, stam: 6,  stun: 0.34, push: 0.14, high: true },
+      cross: { windup: 0.24, active: 0.10, recover: 0.34, dmg: 9,  reach: 1.34, stam: 10, stun: 0.46, push: 0.20, high: true },
+      upper: { windup: 0.21, active: 0.10, recover: 0.46, dmg: 15, reach: 1.08, stam: 15, stun: 0.62, push: 0.26, high: false },
       fly:   { windup: 0.10, active: 0.60, recover: 0.50, dmg: 16, reach: 1.15, stam: 16, stun: 0.70, push: 0.40, high: true, air: true },
     },
     oscar: {
@@ -32,28 +32,28 @@
     muslera: {
       name: 'MUSLERA', alias: 'EL PUEBLO', guard: 'low',
       hp: 100, stamina: 100,
-      walk: 1.55, back: 1.25, strafe: 1.2,
-      blockStartup: 0.16, blockReduce: 0.55, blockStamCost: 9,
-      dodgeDur: 0.36, dodgeInv: [0.04, 0.30], dodgeCost: 8, dodgeCooldown: 0.55,
-      jumpVel: 4.4, jumpCost: 10,
-      regenIdle: 13, regenWalk: 7,
+      walk: 2.1, back: 1.7, strafe: 1.7,
+      blockStartup: 0.16, blockReduce: 0.55, blockStamCost: 8,
+      dodgeDur: 0.32, dodgeInv: [0.03, 0.27], dodgeCost: 7, dodgeCooldown: 0.4,
+      jumpVel: 4.8, jumpCost: 8,
+      regenIdle: 14, regenWalk: 8,
       riseHp: [42, 32, 0],
     },
     oscar: {
       name: 'OSCAR', alias: 'EL CAMPEÓN', guard: 'high',
       hp: 100, stamina: 100,
-      walk: 1.55, back: 1.35, strafe: 1.25,
+      walk: 2.0, back: 1.75, strafe: 1.7,
       blockStartup: 0.0, blockReduce: 0.85, blockStamCost: 5,
       dodgeDur: 0.30, dodgeInv: [0.02, 0.26], dodgeCost: 6, dodgeCooldown: 0.45,
-      jumpVel: 4.4, jumpCost: 10,
-      regenIdle: 15, regenWalk: 8,
+      jumpVel: 4.8, jumpCost: 8,
+      regenIdle: 14, regenWalk: 8,
       riseHp: [36, 26, 0],
     },
   };
 
   // parámetros de la IA según dificultad (0 = sin cinturones, 1 = cinturón negro)
-  const AI_EASY = { reactJab: 0.47, reactHeavy: 0.71, reactDelay: 0.12, aggression: 0.9, comboBreak: 0.85, tauntEvery: [12, 19], tauntDur: 1.0, preferDodge: 0.25, dmgScale: 0.62, globalDmg: 0.7, followUp: 0.4, cooldownMin: 1.4, cooldownRand: 1.3, airPunish: 0.48, duckPunish: 0.42, jumpRate: 0.025, strafeRate: 0.35, spamRead: 0.18 };
-  const AI_HARD = { reactJab: 0.5, reactHeavy: 0.72, reactDelay: 0.115, aggression: 0.95, comboBreak: 0.87, tauntEvery: [13, 21], tauntDur: 0.95, preferDodge: 0.28, dmgScale: 0.66, globalDmg: 0.7, followUp: 0.42, cooldownMin: 1.4, cooldownRand: 1.3, airPunish: 0.6, duckPunish: 0.55, jumpRate: 0.03, strafeRate: 0.4, spamRead: 0.19 };
+  const AI_EASY = { reactJab: 0.6, reactHeavy: 0.8, reactDelay: 0.12, aggression: 0.95, comboBreak: 0.85, tauntEvery: [12, 19], tauntDur: 1.0, preferDodge: 0.25, dmgScale: 0.6, globalDmg: 0.7, followUp: 0.45, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.5, duckPunish: 0.45, jumpRate: 0.025, strafeRate: 0.4, spamRead: 0.2 };
+  const AI_HARD = { reactJab: 0.63, reactHeavy: 0.82, reactDelay: 0.118, aggression: 0.95, comboBreak: 0.86, tauntEvery: [13, 21], tauntDur: 0.97, preferDodge: 0.27, dmgScale: 0.62, globalDmg: 0.7, followUp: 0.47, cooldownMin: 1.3, cooldownRand: 1.2, airPunish: 0.56, duckPunish: 0.5, jumpRate: 0.028, strafeRate: 0.42, spamRead: 0.22 };
 
   function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
   function lerp(a, b, t) { return a + (b - a) * t; }
@@ -146,7 +146,7 @@
       this.time += dt; this.phaseT += dt;
       const p = this.p, o = this.o;
       switch (this.phase) {
-        case 'ready': this.stepPassive(dt); if (this.phaseT > 1.6) { this.phase = 'fight'; this.phaseT = 0; this.emit('bell', { kind: 'start' }); } break;
+        case 'ready': this.stepPassive(dt); if (this.phaseT > 1.3) { this.phase = 'fight'; this.phaseT = 0; this.emit('bell', { kind: 'start' }); } break;
         case 'fight': this.roundT -= dt; this.totalFightTime += dt; this.stepFighters(dt, input); if (this.roundT <= 0 && this.phase === 'fight') this.endRound(); break;
         case 'count': this.stepCount(dt, input); break;
         case 'roundEnd': this.stepFighters(dt, {}); if (this.phaseT > 2.2) { this.phase = 'break'; this.phaseT = 0; this.emit('break', { round: this.round }); } break;
@@ -441,7 +441,7 @@
 
       // --- 1. Reacción a los golpes del jugador
       if (p.move && p.phase === 'windup' && b.seenAttack !== p.move) {
-        b.seenAttack = p.move;
+        b.seenAttack = p.move; b.lastSwing = this.time;
         const heavy = p.state !== 'jab';
         let pr = heavy ? A.reactHeavy : A.reactJab;
         b.recent = b.recent.concat(p.state).slice(-3);
@@ -509,7 +509,7 @@
       if (p.state === 'down') { it.approach = -1; return it; }
 
       // --- 8. Salto ocasional desde media distancia (puñetazo volador telegrafiado)
-      if (dist > 1.5 && dist < 2.3 && !p.move && b.cooldown <= 0 && this.rng() < A.jumpRate * dt * 4.8) { it.jump = true; it.approach = 1; b.cooldown = 1.6; return it; }
+      if (dist > 1.5 && dist < 2.3 && !p.move && b.cooldown <= 0 && this.time - (b.lastSwing || -9) > 1.5 && this.rng() < A.jumpRate * dt * 4.8) { it.jump = true; it.approach = 1; b.cooldown = 1.6; return it; }
 
       // --- 9. Decidir un nuevo combo
       if (b.cooldown <= 0 && !o.move && dist <= 1.5) {
