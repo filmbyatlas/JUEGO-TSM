@@ -11,7 +11,7 @@
 
   // ----------------------------------------------------------- progreso
   const SAVE_KEY = 'tsm_progreso_v1';
-  const save = { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0, muted: false };
+  const save = { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0, muted: false, voices: true };
   function loadSave() { try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}'); Object.assign(save, s); } catch (e) { } }
   function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { } }
   function currentBelt() { let b = null; for (const belt of D.BELTS) if (save.wins >= belt.wins) b = belt; return b; }
@@ -22,7 +22,7 @@
     canvas: null, ctx: null, cw: 0, ch: 0, dpr: 1,
     screen: 'title',       // title intro fight pool corner over
     sim: null, t: 0, acc: 0, last: 0,
-    cam: { x: 0, y: 0, scale: 1, vw: W, shake: 0, zoom: 1 },
+    cam: { x: 0, y: 0, scale: 1, vw: W, shake: 0, zoom: 1, zoomT: 0, orbit: 0, lookX: null, lookY: null, camH: 0.4 },
     fx: { parts: [], texts: [], flash: 0, slow: 0, ring: [] },
     crowd: { excite: 0.2, cheer: 0 },
     ticker: { text: '', t: 0, who: '' },
@@ -49,6 +49,44 @@
   function shake(a) { G.cam.shake = Math.max(G.cam.shake, a); }
   function say(text, who) { G.ticker = { text, t: 0, who: who || '' }; G.lastSayAt = G.t; }
   function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  // Frases épicas reales de los protagonistas
+  const QUOTES = {
+    muslera: {
+      frances: 'Yo te puedo hablar en francés: como tú tapel, yo llameg Musler.',
+      gordo: 'Un gordo en un súper es un súper gordo.',
+      anal: '¡Y se la metí por detrás, por el culo, anal!',
+      bajas: '¿Bajas tío? Eh eh eh eh ¿bajas? Eh eh ¿bajas?',
+    },
+    oscar: {
+      btc: 'Compra BTC, bro.',
+      especular: 'Especular e invertir no es lo mismo, bro.',
+      dios: 'Soy Dios.',
+      marito: '¡Maritocracia!',
+      trump: '¡Viva Trump!',
+    },
+  };
+  G.bubbles = []; G.quoteCd = { muslera: 0, oscar: 0 };
+  function quote(who, key, opts) {
+    opts = opts || {};
+    const text = QUOTES[who][key]; if (!text) return;
+    if (!opts.force && G.t < G.quoteCd[who]) return;
+    G.quoteCd[who] = G.t + (opts.cooldown || 6);
+    G.bubbles = G.bubbles.filter(b => b.who !== who);
+    const life = Math.max(2.6, 1.2 + text.length * 0.055);
+    G.bubbles.push({ who, text, t: 0, life });
+    speak(who, text);
+  }
+  function speak(who, text) {
+    if (!save.voices || !('speechSynthesis' in window)) return;
+    try {
+      const u = new SpeechSynthesisUtterance(text.replace(/¡|!|¿/g, '').replace('llameg', 'yamej').replace('tapel', 'tapél'));
+      u.lang = 'es-ES'; u.rate = who === 'muslera' ? 1.0 : 1.12; u.pitch = who === 'muslera' ? 0.65 : 1.15; u.volume = save.muted ? 0 : 1;
+      const voices = speechSynthesis.getVoices(); const es = voices.filter(v => /^es/i.test(v.lang));
+      if (es.length) u.voice = es[who === 'muslera' ? 0 : Math.min(1, es.length - 1)];
+      speechSynthesis.cancel(); speechSynthesis.speak(u);
+    } catch (e) { }
+  }
 
   const LINES = {
     hitO: ['Oscar conecta. Muslera ni lo ha visto venir.', 'Jab limpio de Oscar. Las manos, Muslera, LAS MANOS.', 'Oscar pega como quien firma un autógrafo.', 'Golpe de Oscar. Alguien en el público ha dicho "uf".', 'Oscar encuentra la cara de Muslera. No era difícil: la guardia está en el sótano.', 'Directo de Oscar. El perro ha mirado hacia otro lado.'],
@@ -130,21 +168,33 @@
 
   // ----------------------------------------------------------- UI
   function bindUI() {
-    $('btn-fight').onclick = () => { AU.init(); AU.uiClick(); startFight(); };
+    $('btn-fight').onclick = () => { AU.init(); AU.uiClick(); if (G.touch) goFullscreen(); startFight(); };
     $('btn-howto').onclick = () => { AU.init(); AU.uiClick(); showScreen('howto'); };
     $('btn-belts').onclick = () => { AU.init(); AU.uiClick(); renderBelts(); showScreen('belts'); };
     for (const b of document.querySelectorAll('.btn-back')) b.onclick = () => { AU.uiClick(); showScreen('title'); refreshTitle(); };
     $('btn-rest').onclick = () => { AU.uiClick(); chooseBreak('rest'); };
     $('btn-pool').onclick = () => { AU.uiClick(); chooseBreak('pool'); };
-    $('btn-again').onclick = () => { AU.uiClick(); startFight(); };
+    $('btn-again').onclick = () => { AU.uiClick(); if (G.touch) goFullscreen(); startFight(); };
     $('btn-menu').onclick = () => { AU.uiClick(); G.screen = 'title'; showScreen('title'); refreshTitle(); };
     $('btn-mute').onclick = () => { AU.init(); save.muted = !save.muted; AU.setMuted(save.muted); persist(); updateMuteBtn(); };
+    $('btn-voice').onclick = () => { save.voices = !save.voices; persist(); updateMuteBtn(); if (save.voices) speak('oscar', 'Soy Dios.'); else if ('speechSynthesis' in window) speechSynthesis.cancel(); };
+    $('btn-full').onclick = () => { goFullscreen(); };
     $('btn-resume').onclick = () => togglePause();
     $('btn-quit').onclick = () => { G.paused = false; G.screen = 'title'; showScreen('title'); refreshTitle(); };
     $('btn-pause').onclick = () => togglePause();
     $('btn-reset').onclick = () => { if ($('btn-reset').dataset.armed) { Object.assign(save, { wins: 0, losses: 0, fights: 0, streak: 0, bestStreak: 0, kos: 0, pool: 0, fastest: 0, decisions: 0, knockedDown: 0 }); persist(); renderBelts(); $('btn-reset').textContent = 'Progreso borrado'; delete $('btn-reset').dataset.armed; } else { $('btn-reset').dataset.armed = '1'; $('btn-reset').textContent = '¿Seguro? Pulsa otra vez'; } };
   }
-  function updateMuteBtn() { $('btn-mute').textContent = save.muted ? '🔇' : '🔊'; $('btn-mute').setAttribute('aria-label', save.muted ? 'Activar sonido' : 'Silenciar'); }
+  function updateMuteBtn() {
+    $('btn-mute').textContent = save.muted ? '🔇' : '🔊'; $('btn-mute').setAttribute('aria-label', save.muted ? 'Activar sonido' : 'Silenciar');
+    $('btn-voice').textContent = save.voices ? '🗣️' : '🤐'; $('btn-voice').setAttribute('aria-label', save.voices ? 'Quitar voces' : 'Poner voces'); $('btn-voice').classList.toggle('off', !save.voices);
+  }
+  // pantalla completa + horizontal en el móvil (donde el navegador lo permita)
+  function goFullscreen() {
+    const el = document.documentElement;
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) { try { const r = req.call(el); if (r && r.catch) r.catch(() => { }); } catch (e) { } }
+    try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (e) { }
+  }
   function togglePause() {
     if (!['fight', 'intro', 'corner'].includes(G.screen)) return;
     G.paused = !G.paused; $('ov-pause').hidden = !G.paused; G.input.held.clear();
@@ -184,10 +234,11 @@
     AU.init(); AU.crowd(0.25); AU.intro();
     say('Casa rural. Noche. Dos amigos, dos pares de guantes y ninguna idea buena.', '');
   }
-  function skipIntro() { if (G.screen === 'intro' && G.intro.t > 0.5) { G.intro.t = 99; } }
+  function skipIntro() { if (G.screen === 'intro' && G.intro.t > 0.5) { G.intro.t = 99; G.bubbles.length = 0; if ('speechSynthesis' in window) try { speechSynthesis.cancel(); } catch (e) { } } }
 
   function beginRound1() {
     G.screen = 'fight'; G.sim.beginRound(); G.sim.p.face = 'normal'; G.sim.o.face = 'normal';
+    G.cam.lookX = null; G.cam.zoom = 1; G.cam.orbit = 0; G.cam.camH = 0.4; G.nextIdleQuote = G.t + 14;
     G.roundCard = { text: 'ASALTO 1', t: 0 }; AU.crowd(0.3);
     say(pick(LINES.roundStart[1]), '');
   }
@@ -207,7 +258,8 @@
   function startNextRound() {
     const sim = G.sim; sim.nextRound();
     G.screen = 'fight'; G.roundCard = { text: 'ASALTO ' + sim.round, t: 0 };
-    if (G.pool.healed) { G.pool.healed = false; setTimeout(() => addText('¡VIDA AL MÁXIMO!', sim.p.x, FLOOR - 280, { size: 34, color: '#8dffb0', stroke: '#0a3a1a', life: 1.6, vy: -25 }), 600); }
+    if (G.pool.healed) { G.pool.healed = false; setTimeout(() => addText('¡VIDA AL MÁXIMO!', sim.p.x, FLOOR - 280, { size: 34, color: '#8dffb0', stroke: '#0a3a1a', life: 1.6, vy: -25 }), 600); setTimeout(() => quote('muslera', 'gordo', { force: true }), 2600); }
+    G.nextIdleQuote = G.t + 12;
     say(pick(LINES.roundStart[sim.round] || LINES.roundStart[3]), '');
     AU.crowd(0.3);
     setControls(G.touch);
@@ -234,6 +286,7 @@
     save.knockedDown += res.kd.p;
     persist();
     AU.crowd(res.winner === 'player' ? 0.7 : 0.35);
+    setTimeout(() => quote(res.winner === 'player' ? 'muslera' : 'oscar', res.winner === 'player' ? pick(['anal', 'frances']) : pick(['dios', 'trump']), { force: true }), 2000);
     if (res.winner === 'player') { AU.win(); G.crowd.cheer = 1; for (let i = 0; i < 6; i++) setTimeout(() => burst(200 + Math.random() * 560, 120 + Math.random() * 160, 40, { color: pick(['#f2d33b', '#ec93c0', '#56cfcb', '#fff', '#f08a2a']), speed: 260 }), i * 350); }
     else AU.lose();
     setTimeout(showResults, 2600);
@@ -275,6 +328,9 @@
         case 'hit': {
           const byP = e.by === 'muslera';
           if (e.counter) AU.counter(); else AU.punch(e.move);
+          if (e.counter || e.move === 'upper') { G.cam.zoom = e.counter ? 0.8 : 0.9; G.cam.zoomT = e.counter ? 0.6 : 0.35; }
+          if (byP && e.counter && Math.random() < 0.5) quote('muslera', 'bajas');
+          if (!byP && (e.move === 'upper' || e.combo >= 3) && Math.random() < 0.45) quote('oscar', 'marito');
           shake(e.counter ? 14 : e.move === 'upper' ? 10 : e.move === 'cross' ? 6 : 3);
           burst(e.x, e.y, e.counter ? 22 : 10, { color: byP ? '#ffe36b' : '#ffffff', speed: e.counter ? 320 : 180 });
           G.fx.ring.push({ x: e.x, y: e.y, t: 0, big: e.counter || e.move === 'upper' });
@@ -295,12 +351,14 @@
           addText(e.who === 'oscar' ? '¡¡AL SUELO!!' : '¡¡MUSLERA CAE!!', (sim.p.x + sim.o.x) / 2, FLOOR - 300, { size: 54, color: e.who === 'oscar' ? '#ffe36b' : '#ff8a8a', stroke: '#3a0a0a', life: 1.8, vy: -10 });
           G.crowd.excite = 1; G.crowd.cheer = 1; AU.crowd(0.7, true);
           burst(e.who === 'oscar' ? sim.o.x : sim.p.x, FLOOR - 200, 30, { color: '#fff', speed: 300 });
+          G.cam.zoom = 0.7; G.cam.zoomT = 2.2; G.cam.orbitT = 2.2;
+          setTimeout(() => quote(e.who === 'oscar' ? 'muslera' : 'oscar', e.who === 'oscar' ? 'anal' : 'dios', { force: true }), 900);
           break;
         }
-        case 'count': if (e.n > 0 && e.n <= 10) { AU.count(e.n); addText(String(e.n), e.who === 'muslera' ? sim.p.x : sim.o.x, FLOOR - 240, { size: 56, color: '#fff', stroke: '#000', life: 0.8, vy: -20 }); } break;
+        case 'count': if (e.n === 4 && e.who === 'oscar') quote('muslera', 'bajas', { force: true }); if (e.n > 0 && e.n <= 10) { AU.count(e.n); addText(String(e.n), e.who === 'muslera' ? sim.p.x : sim.o.x, FLOOR - 240, { size: 56, color: '#fff', stroke: '#000', life: 0.8, vy: -20 }); } break;
         case 'mash': break;
         case 'getUp': AU.getUp(); G.crowd.cheer = 0.6; AU.crowd(0.4); break;
-        case 'taunt': AU.taunt(); addText('¡OSCAR VACILA!', sim.o.x, FLOOR - 290, { size: 26, color: '#56cfcb', stroke: '#083a3a', life: 1.2 }); G.crowd.cheer = 0.5; break;
+        case 'taunt': AU.taunt(); addText('¡OSCAR VACILA!', sim.o.x, FLOOR - 290, { size: 26, color: '#56cfcb', stroke: '#083a3a', life: 1.2 }); G.crowd.cheer = 0.5; quote('oscar', pick(['trump', 'btc', 'especular']), { force: true, cooldown: 3 }); break;
         case 'comboEnd': break;
         case 'say': if (G.t - G.lastSayAt > 0.8 || /CONTRA|SUELO|levanta|chulo|vacil|momento/i.test(e.text)) say(e.text, e.who); break;
         case 'roundStart': break;
@@ -331,6 +389,11 @@
     for (const r of G.fx.ring) r.t += dt; G.fx.ring = G.fx.ring.filter(r => r.t < 0.35);
     G.fx.flash = Math.max(0, G.fx.flash - dt * 3);
     G.cam.shake = Math.max(0, G.cam.shake - dt * 60);
+    if (G.cam.zoomT > 0) { G.cam.zoomT -= dt; if (G.cam.zoomT <= 0 && G.screen === 'fight') G.cam.zoom = 1; }
+    if (G.cam.orbitT > 0) { G.cam.orbitT -= dt; G.cam.orbit = Math.sin(G.t * 0.9) * 0.35; if (G.cam.orbitT <= 0) G.cam.orbit = 0; }
+    if (G.screen === 'over') { G.cam.orbit = Math.sin(G.t * 0.35) * 0.5; G.cam.zoom = 1.0; G.cam.camH = 0.5; }
+    if (G.screen === 'title') { G.cam.orbit = Math.sin(G.t * 0.18) * 0.45; G.cam.zoom = 0.9; G.cam.camH = 0.5; G.cam.lookX = null; }
+    for (const b of G.bubbles) b.t += dt; G.bubbles = G.bubbles.filter(b => b.t < b.life);
     G.crowd.cheer = Math.max(0, G.crowd.cheer - dt * 0.7);
     G.crowd.excite = Math.max(0.15, G.crowd.excite - dt * 0.05);
     G.ticker.t += dt; G.roundCard.t += dt;
@@ -343,6 +406,7 @@
         while (G.acc >= 1 / 60 && n < 4) { sim.update(1 / 60, inp); handleEvents(sim); inp.jab = inp.cross = inp.upper = inp.dodge = inp.mash = false; G.acc -= 1 / 60; n++; }
         if (n === 0) { G.input.pressed.clear(); } // evitar perder pulsaciones: readInput ya las consumió
         sweat(sim.p); sweat(sim.o);
+        if (sim.phase === 'fight' && G.t > (G.nextIdleQuote || 0)) { G.nextIdleQuote = G.t + 16 + Math.random() * 14; if (Math.random() < 0.6) quote('muslera', pick(['frances', 'gordo'])); else quote('oscar', pick(['btc', 'especular'])); }
         if (sim.p.fresh > 0 && Math.random() < 0.3) G.fx.parts.push({ x: sim.p.x + (Math.random() - 0.5) * 24, y: FLOOR - 225, vx: (Math.random() - 0.5) * 40, vy: 40, t: 0, life: 0.5, r: 2, color: 'rgba(160,220,255,0.9)', g: 300, kind: 'drop' });
         break;
       }
@@ -362,8 +426,15 @@
     else if (I.t < 6.2) { o.state = 'idle'; o.t = I.t; p.x = clamp(lerp(60, 330, (I.t - 3.4) / 2.4), 60, 330); p.state = 'walk'; p.walkDir = 1; p.t = I.t; p.dir = 1; if (I.t > 5.9) { p.state = 'idle'; } }
     else { o.state = 'idle'; p.state = 'idle'; o.t = I.t; p.t = I.t; }
     if (I.step === 0 && I.t > 0.6) { I.step = 1; G.crowd.cheer = 0.8; say('¡Entra OSCAR! Con medallas. Medallas de verdad. Esto empieza mal para Muslera.', 'oscar'); AU.crowdBurst(0.5); }
-    if (I.step === 1 && I.t > 3.5) { I.step = 2; G.crowd.cheer = 0.5; say('Y aquí llega MUSLERA, con su toalla, sus guantes rosas y la guardia por los suelos.', 'muslera'); }
-    if (I.step === 2 && I.t > 6.4) { I.step = 3; say('Tres asaltos de un minuto. Que gane el mejor. O sea, Oscar. Salvo que...', ''); }
+    if (I.step === 1 && I.t > 2.0) { I.step = 2; quote('oscar', 'btc', { force: true }); }
+    if (I.step === 2 && I.t > 3.5) { I.step = 3; G.crowd.cheer = 0.5; say('Y aquí llega MUSLERA, con su toalla, sus guantes rosas y la guardia por los suelos.', 'muslera'); }
+    if (I.step === 3 && I.t > 4.6) { I.step = 4; quote('muslera', 'frances', { force: true }); }
+    if (I.step === 4 && I.t > 6.4) { I.step = 5; say('Tres asaltos de un minuto. Que gane el mejor. O sea, Oscar. Salvo que...', ''); }
+    if (I.step === 5 && I.t > 7.3) { I.step = 6; quote('oscar', 'dios', { force: true }); }
+    // cámara de presentación: cerca de quien entra, luego plano general
+    if (I.t < 3.4) { G.cam.lookX = o.x + 40; G.cam.zoom = 0.72; G.cam.orbit = -0.6; G.cam.camH = 0.1; }
+    else if (I.t < 6.4) { G.cam.lookX = p.x - 40; G.cam.zoom = 0.72; G.cam.orbit = 0.6; G.cam.camH = 0.1; }
+    else { G.cam.lookX = null; G.cam.zoom = 1; G.cam.orbit = 0; G.cam.camH = 0.4; }
     if (I.t > 8.6) { p.x = 360; o.x = 600; p.walkDir = 0; o.walkDir = 0; beginRound1(); }
   }
 
@@ -400,7 +471,7 @@
     let toScreen, s;
     if (G.use3d) {
       const R3 = root.TSM_3D;
-      R3.render({ sim, t: G.t, dt: G.lastDt || 0.016, screen: G.screen, cheer: G.crowd.cheer, excite: G.crowd.excite, intro: G.screen === 'intro', vw: G.cam.vw, cx: G.cam.x, shake: G.cam.shake, results: G.results });
+      R3.render({ sim, t: G.t, dt: G.lastDt || 0.016, screen: G.screen, cheer: G.crowd.cheer, excite: G.crowd.excite, intro: G.screen === 'intro', vw: G.cam.vw, cx: G.cam.x, shake: G.cam.shake, results: G.results, zoom: G.cam.zoom, orbit: G.cam.orbit, lookX: G.cam.lookX, camH: G.cam.camH });
       toScreen = R3.project; s = R3.pxPerLogical();
     } else {
       const r = render2D(ctx); toScreen = r.toScreen; s = r.scale;
@@ -525,10 +596,36 @@
         ctx.font = font(18); ctx.fillStyle = '#ffd7a0'; ctx.fillText(alias, 0, 24 * u); ctx.font = font(13); ctx.fillStyle = '#ccc'; ctx.fillText(record, 0, 42 * u);
         ctx.restore();
       };
-      if (I.t > 0.8 && I.t < 3.6) card('OSCAR', '"EL CAMPEÓN" · hace boxeo de verdad', 'Récord: todas ganadas · Medallas: 3 · Guardia: impecable', (I.t - 0.8) * 2, cw * 0.68);
-      if (I.t > 3.8 && I.t < 6.6) card('MUSLERA', '"EL PUEBLO" · no hace boxeo', `Récord: ${save.wins}-${save.losses} · Guardia: ¿qué guardia?`, (I.t - 3.8) * 2, cw * 0.32);
+      if (I.t > 0.8 && I.t < 3.6) card('OSCAR', '"EL CAMPEÓN" · hace boxeo de verdad', 'Récord: todas ganadas · Medallas: 3 · Guardia: impecable', (I.t - 0.8) * 2, cw * 0.24);
+      if (I.t > 3.8 && I.t < 6.6) card('MUSLERA', '"EL PUEBLO" · no hace boxeo', `Récord: ${save.wins}-${save.losses} · Guardia: ¿qué guardia?`, (I.t - 3.8) * 2, cw * 0.78);
       if (I.t > 6.6) { ctx.save(); ctx.globalAlpha = clamp((I.t - 6.6) * 2, 0, 1); ctx.font = font(96, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = '#ffe36b'; ctx.strokeText('VS', cw / 2, ch * 0.38); ctx.fillText('VS', cw / 2, ch * 0.38); ctx.restore(); }
       ctx.font = font(13); ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.fillText('toca para saltar', cw - pad, ch - pad - 30 * u);
+    }
+    // bocadillos de frases épicas
+    if (sim && sim.phase !== 'break') for (const b of G.bubbles) {
+      const f = b.who === 'muslera' ? sim.p : sim.o;
+      const anchor = G.toScreen(f.x, FLOOR - 262 + (f.state === 'down' ? 200 : 0));
+      const shown = Math.min(b.text.length, Math.floor(b.t * 38));
+      const a = b.t < 0.15 ? b.t / 0.15 : b.t > b.life - 0.3 ? (b.life - b.t) / 0.3 : 1;
+      ctx.save(); ctx.globalAlpha = a;
+      ctx.font = `700 ${17 * u}px "Barlow Condensed", "Arial Narrow", sans-serif`; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+      const maxW = Math.min(cw * 0.46, 300 * u); const words = b.text.split(' '); const lines = []; let line = '';
+      for (const w of words) { const test = line ? line + ' ' + w : w; if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test; }
+      if (line) lines.push(line);
+      const lh = 21 * u, padX = 12 * u, padY = 9 * u; const bw = Math.min(maxW, Math.max(...lines.map(l => ctx.measureText(l).width))) + padX * 2, bh = lines.length * lh + padY * 2;
+      let bx = clamp(anchor.x - bw / 2 + (b.who === 'muslera' ? -30 * u : 30 * u), 6, cw - bw - 6), by = clamp(anchor.y - bh - 26 * u, (G.screen === 'intro' ? 20 : 108) * u, ch - bh - 80 * u);
+      const pop = b.t < 0.15 ? 0.8 + b.t / 0.15 * 0.2 : 1;
+      ctx.translate(bx + bw / 2, by + bh); ctx.scale(pop, pop); ctx.translate(-(bx + bw / 2), -(by + bh));
+      ctx.fillStyle = '#fffdf7'; ctx.strokeStyle = '#1a0c08'; ctx.lineWidth = 2.5 * u;
+      D.rr(ctx, bx, by, bw, bh, 12 * u); ctx.fill(); ctx.stroke();
+      const tx = clamp(anchor.x, bx + 20 * u, bx + bw - 20 * u);
+      ctx.beginPath(); ctx.moveTo(tx - 10 * u, by + bh - 1); ctx.lineTo(anchor.x, by + bh + 18 * u); ctx.lineTo(tx + 10 * u, by + bh - 1); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(tx - 10 * u, by + bh); ctx.lineTo(anchor.x, by + bh + 18 * u); ctx.lineTo(tx + 10 * u, by + bh); ctx.stroke();
+      ctx.fillStyle = '#fffdf7'; ctx.fillRect(tx - 9 * u, by + bh - 3, 18 * u, 5);
+      ctx.fillStyle = '#1a0c08'; let count = 0;
+      for (let i = 0; i < lines.length; i++) { const l = lines[i]; const vis = l.slice(0, Math.max(0, shown - count)); count += l.length + 1; ctx.fillText(vis, bx + padX, by + padY + i * lh); }
+      ctx.font = `700 ${11 * u}px "Barlow Condensed", sans-serif`; ctx.fillStyle = b.who === 'muslera' ? '#b84e86' : '#1f8c88'; ctx.fillText(b.who === 'muslera' ? 'MUSLERA' : 'OSCAR', bx + padX, by - 14 * u);
+      ctx.restore();
     }
     // ticker de comentarios
     if (G.ticker.text && G.ticker.t < 5.5) {
@@ -547,7 +644,7 @@
       const won = G.results.winner === 'player'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.font = font(60, '"Anton", Impact, sans-serif'); ctx.lineWidth = 8 * u; ctx.strokeStyle = '#3a0a0a'; ctx.fillStyle = won ? '#ffe36b' : '#ff8a8a';
       const txt = won ? '¡GANA MUSLERA!' : (G.results.method === 'decision' ? 'GANA OSCAR' : 'K.O.');
-      ctx.strokeText(txt, cw / 2, ch * 0.36); ctx.fillText(txt, cw / 2, ch * 0.36);
+      ctx.strokeText(txt, cw / 2, ch * 0.8); ctx.fillText(txt, cw / 2, ch * 0.8);
     }
   }
 

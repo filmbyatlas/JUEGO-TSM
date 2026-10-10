@@ -33,6 +33,13 @@ Para publicarlo con un enlace: activa **GitHub Pages** en este repositorio (Sett
 - **Caídas**: a la tercera caída se acaba. Para levantarte hay que machacar botones antes del 10. Si no hay KO, deciden los jueces, que son amigos de Oscar.
 - **Cinturones** por victorias acumuladas (se guardan en el navegador): 1 blanco, 3 amarillo, 5 naranja, 10 verde, 25 azul, 50 marrón y 100 el cinturón negro KLK.
 
+## Frases épicas
+
+Durante la pelea salen bocadillos (y voz sintetizada en español, desactivable con el botón 🗣️) con frases reales de los dos:
+
+- Muslera: "Yo te puedo hablar en francés: como tú tapel, yo llameg Musler", "Un gordo en un súper es un súper gordo", "¡Y se la metí por detrás, por el culo, anal!" (cuando tumba a Oscar), "¿Bajas tío? Eh eh eh eh ¿bajas?" (con Oscar en el suelo o tras una contra).
+- Oscar: "Compra BTC, bro", "Especular e invertir no es lo mismo, bro", "Soy Dios" (cuando tumba a Muslera), "¡Maritocracia!" (uppercuts y combos), "¡Viva Trump!" (cuando vacila).
+
 ## Desarrollo
 
 ```

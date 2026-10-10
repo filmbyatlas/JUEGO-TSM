@@ -29,7 +29,8 @@ body.touch:not(.playing) #btn-pause { display: none; }
 /* táctil en horizontal: la botonera flota sobre el escenario para no robar altura */
 body.touch.playing:not(.portrait) #controls { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,0.45)); border-top: 0; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); pointer-events: none; }
 body.touch.playing:not(.portrait) #controls .ctl { pointer-events: auto; opacity: 0.82; }
-body.touch.playing:not(.portrait) #topbar { bottom: auto; top: 50%; right: 6px; flex-direction: column; }
+body.touch.playing:not(.portrait) #topbar { bottom: auto; top: 44%; transform: translateY(-50%); right: 4px; flex-direction: column; gap: 4px; }
+body.touch.playing:not(.portrait) #topbar button { width: 32px; height: 32px; font-size: 14px; opacity: 0.75; }
 /* táctil en vertical: dos filas de botones a la derecha */
 body.touch.portrait.playing .ctl-group.right { flex-wrap: wrap; justify-content: flex-end; width: 222px; row-gap: 8px; }
 body.touch.portrait.playing .ctl-def { flex-direction: row; width: 100%; justify-content: flex-end; }
@@ -41,6 +42,8 @@ body.touch.portrait.playing .ctl-group.right .ctl:not(.dodge):not(.block) { widt
 #game { pointer-events: none; }
 #topbar { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; z-index: 5; }
 #topbar button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: rgba(0,0,0,0.55); color: var(--fg); font-size: 18px; cursor: pointer; }
+#topbar button.off { opacity: 0.55; }
+body:not(.touch) #btn-full { display: none; }
 #topbar button:focus-visible, .btn:focus-visible, .ctl:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 body:not(.touch) #btn-pause { display: none; }
 
@@ -125,6 +128,8 @@ kbd { font-family: var(--body); font-weight: 700; background: #1d1826; border: 1
     <canvas id="game" aria-label="Combate de boxeo entre Muslera y Oscar"></canvas>
     <div id="topbar">
       <button id="btn-pause" type="button" aria-label="Pausa">⏸</button>
+      <button id="btn-full" type="button" aria-label="Pantalla completa">⛶</button>
+      <button id="btn-voice" type="button" aria-label="Voces">🗣️</button>
       <button id="btn-mute" type="button" aria-label="Silenciar">🔊</button>
     </div>
   </div>
